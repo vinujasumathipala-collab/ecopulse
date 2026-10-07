@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoPulse | Comprehensive Waste Management & Recycling System</title>
+  <meta name="description" content="Intelligent Municipal Waste Management, Collection Scheduling, Segregation Guidance, Recycling Allocation, and Monitoring Analytics Platform.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-light">
+  <!-- Top Navigation Bar -->
+  <header class="top-nav" id="topNav">
+    <div class="nav-left">
+      <div class="brand-logo" id="brandHomeBtn">
+        <div class="logo-icon-wrap">
+          <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/>
+            <path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/>
+            <path d="m14 16-3 3 3 3"/>
+            <path d="M8.293 13.596 4.8 7.5a1.82 1.82 0 0 1 0-1.785A1.83 1.83 0 0 1 6.37 4.83l9.87.012a1.83 1.83 0 0 1 1.57.882 1.784 1.784 0 0 1 .005 1.785l-1.465 2.54"/>
+            <path d="m13 4 3-3 3 3"/>
+            <path d="m10 22-1.5-2.5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">EcoPulse</span>
+          <span class="brand-sub">Waste & Recycling OS</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nav-right">
+
+      <div class="db-status-badge" id="supabaseStatusBadge" title="Live Supabase Cloud Database Connected">
+        <span class="db-status-dot" id="supabaseStatusDot"></span>
+        <span class="db-status-text" id="supabaseStatusText">Cloud Sync Live</span>
+      </div>
+
+      <button class="icon-btn theme-toggle-btn" id="themeToggleBtn" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+
+      <button class="nav-action-btn secondary-action" id="openComplaintModalBtn" title="Lodge a Complaint or Incident">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Report Issue</span>
+      </button>
+
+      <button class="nav-action-btn secondary-action" id="navRegisterUserBtn" title="Register / Create New User Account">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        <span>+ New Account</span>
+      </button>
+
+      <button class="nav-action-btn primary-action" id="openRequestModalBtn" title="Create New Waste Pickup Request">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Request Pickup</span>
+      </button>
+
+      <!-- Profile Avatar and Menu -->
+      <div class="user-profile-menu" id="userProfileBtn">
+        <div class="avatar-ring">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="user-summary">
+          <span class="user-name" id="userNameDisplay">Alex Mercer</span>
+          <span class="user-role-label" id="userZoneDisplay">Zone: Colombo Fort</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main System Container -->
+  <div class="app-layout">
+    <!-- Sidebar Navigation for 4 Core Functions -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-section-title" id="sidebarSectionTitle">SYSTEM MODULES</div>
+      <nav class="sidebar-nav" id="sidebarNav">
+        <button class="nav-tab-btn active" data-tab="dashboard">
+          <span class="tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </span>
+          <span class="tab-label">Dashboard & Overview</span>
+        </button>
+
+        <button class="nav-tab-btn" data-tab="function1" data-persona-role="resident admin">
+          <span class="tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <span class="tab-label">Pickups & Residents</span>
+        </button>
+
+        <button class="nav-tab-btn" data-tab="function2" data-persona-role="crew admin">
+          <span class="tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </span>
+          <span class="tab-label">Fleet & Schedules</span>
+        </button>
+
+        <button class="nav-tab-btn" data-tab="function3" data-persona-role="resident recycler admin">
+          <span class="tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </span>
+          <span class="tab-label">Recycling & Sort Guide</span>
+        </button>
+
+        <button class="nav-tab-btn" data-tab="function4" data-persona-role="admin">
+          <span class="tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/><circle cx="12" cy="12" r="1"/></svg>
+          </span>
+          <span class="tab-label">Monitoring & Analytics</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+
+      <!-- ======================================================== -->
+      <!-- TAB 0: EXECUTIVE DASHBOARD & OVERVIEW                     -->
+      <!-- ======================================================== -->
+      <section class="tab-pane active" id="tab-dashboard">
+        <div class="pane-header">
+          <div class="pane-title-group">
+            <h1 class="pane-title">Waste & Recycling Operational Hub</h1>
+            <p class="pane-subtitle">Live city-wide collection telemetry, recycling yields, and dispatch control.</p>
+          </div>
+          <div class="pane-actions">
+            <div class="zone-filter-wrap">
+              <label for="dashboardZoneFilter" class="sr-only">Filter by Zone</label>
+              <select id="dashboardZoneFilter" class="filter-select">
+                <option value="all">All Zones</option>
+                <option value="Colombo Fort">Colombo Fort</option>
+                <option value="Kollupitiya">Kollupitiya</option>
+                <option value="Borella">Borella</option>
+                <option value="Wellawatte">Wellawatte</option>
+                <option value="Dehiwala">Dehiwala</option>
+                <option value="Kotte">Kotte (Sri Jayawardenepura)</option>
+                <option value="Nugegoda">Nugegoda</option>
+              </select>
+            </div>
+            <button class="btn btn-outline" id="refreshDashboardBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+              <span>Refresh Telemetry</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Start / Helpful Welcome Banner -->
+        <div class="quick-welcome-banner" id="dashboardWelcomeBanner">
+          <div class="banner-sparkle">🌱</div>
+          <div class="banner-info">
+            <h3>Simple EcoPulse Quick Access</h3>
+            <p>Need waste collected? Schedule a pickup in seconds, check bin sorting rules, or view collection truck schedules.</p>
+          </div>
+          <div class="banner-actions">
+            <button class="btn btn-sm btn-primary" id="bannerNewPickupBtn">+ Request Pickup</button>
+            <button class="btn btn-sm btn-secondary" id="bannerQuickGuideBtn">📖 How It Works (1-Min)</button>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card" data-card="requests">
+            <div class="kpi-icon-wrap emerald">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 8 9"/></svg>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-label">Active Pickup Requests</span>
+              <div class="kpi-number" id="kpiActiveRequests">0</div>
+              <span class="kpi-trend neutral" id="kpiTrendRequests">No active requests</span>
+            </div>
+          </div>
+
+          <div class="kpi-card" data-card="tonnage">
+            <div class="kpi-icon-wrap cyan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-label">Collected Volume (kg)</span>
+              <div class="kpi-number" id="kpiCollectedToday">0 kg</div>
+              <span class="kpi-trend neutral" id="kpiTrendCollected">No collection logged</span>
+            </div>
+          </div>
+
+          <div class="kpi-card" data-card="recycling">
+            <div class="kpi-icon-wrap amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/><path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/><path d="m14 16-3 3 3 3"/></svg>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-label">Diversion / Recycling Rate</span>
+              <div class="kpi-number" id="kpiRecyclingRate">0.0%</div>
+              <span class="kpi-trend neutral" id="kpiTrendRecycling">Awaiting processing</span>
+            </div>
+          </div>
+
+          <div class="kpi-card" data-card="crews">
+            <div class="kpi-icon-wrap violet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-label">Active Crews on Route</span>
+              <div class="kpi-number" id="kpiActiveCrews">0 / 0</div>
+              <span class="kpi-subtext" id="kpiSubtextCrews">0 on standby</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Charts & Telemetry Split -->
+        <div class="grid-2-col">
+          <!-- Left: Waste Stream Breakdown Chart -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h2 class="card-title">Waste Stream Composition (Tons)</h2>
+                <p class="card-subtitle">Segregated material volume recorded across all municipal routes</p>
+              </div>
+              <div class="card-badge">Live Stream</div>
+            </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="wasteDistributionCanvas" width="480" height="230"></canvas>
+              </div>
+              <div class="chart-legend-grid" id="wasteChartLegend">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Zone Live Health & Collection Status -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h2 class="card-title">Zone Collection Completion Rates</h2>
+                <p class="card-subtitle">Real-time daily progress by municipal quadrant</p>
+              </div>
+              <button class="link-btn" data-tab-jump="function2">View Dispatch →</button>
+            </div>
+            <div class="card-body">
+              <div class="zone-progress-list" id="zoneProgressContainer">
+                <!-- Dynamic Zone Bars -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed & Rapid Incident Dispatch -->
+        <div class="grid-2-col mt-4">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Live Dispatch & Collection Telemetry</h2>
+              <span class="live-tag"><span class="blinking-dot"></span> LIVE FEED</span>
+            </div>
+            <div class="card-body">
+              <div class="timeline-feed" id="dashboardActivityFeed">
+                <!-- Injected activity items -->
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Quick Action Hub</h2>
+              <span class="text-muted">Shortcuts for Active Persona</span>
+            </div>
+            <div class="card-body quick-actions-container">
+              <div class="quick-action-tile" id="qaNewRequest">
+                <div class="qa-icon emerald-bg">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+                <div class="qa-text">
+                  <strong>Submit Waste Request</strong>
+                  <span>Schedule doorstep pickup with image upload</span>
+                </div>
+              </div>
+
+              <div class="quick-action-tile" id="qaDailyJobs">
+                <div class="qa-icon blue-bg">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 8"/></svg>
+                </div>
+                <div class="qa-text">
+                  <strong>Crew Daily Route Manifest</strong>
+                  <span>View assigned stops & record weighed amounts</span>
+                </div>
+              </div>
+
+              <div class="quick-action-tile" id="qaRecycleIntake">
+                <div class="qa-icon amber-bg">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                </div>
+                <div class="qa-text">
+                  <strong>Allocate Recyclables</strong>
+                  <span>Dispatch segregated batches to certified facilities</span>
+                </div>
+              </div>
+
+              <div class="quick-action-tile" id="qaSegregationGuide">
+                <div class="qa-icon purple-bg">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="qa-text">
+                  <strong>Segregation Guide</strong>
+                  <span>Lookup item disposal & color-coded bins</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 1: FUNCTION 1 - WASTE REQUEST & RESIDENT MANAGEMENT -->
+      <!-- ======================================================== -->
+      <section class="tab-pane" id="tab-function1">
+        <div class="pane-header">
+          <div class="pane-title-group">
+            <div class="tag-badge">FUNCTION 1</div>
+            <h1 class="pane-title">Waste Request & Resident Management</h1>
+            <p class="pane-subtitle">Manage user accounts, submit pickup requests with photos, track status in real-time, and view schedules.</p>
+          </div>
+          <div class="pane-actions">
+            <button class="btn btn-outline" id="f1NewUserBtn" title="Create New User Account">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              <span>+ New Account</span>
+            </button>
+            <button class="btn btn-secondary" id="viewProfileBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
+              <span>View Profile</span>
+            </button>
+            <button class="btn btn-primary" id="f1RequestPickupBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              <span>+ New Pickup Request</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Resident Profile Banner & Eco-Credit Summary -->
+        <div class="resident-banner-card">
+          <div class="resident-info-col">
+            <div class="resident-avatar-large">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <div class="resident-name-badge">
+                <h2 class="resident-name" id="residentBannerName">Alex Mercer</h2>
+                <span class="user-type-tag" id="residentBannerType">Residential Account</span>
+                <span class="status-pill active">Verified</span>
+              </div>
+              <p class="resident-address" id="residentBannerAddress">📍 12 Galle Road, Colombo (Zone: Colombo Fort)</p>
+              <div class="resident-meta-tags">
+                <span>Account ID: <strong id="residentBannerId">RES-8821</strong></span>
+                <span>Phone: <strong>+1 (555) 234-9811</strong></span>
+                <span>Next Regular Scheduled Pickup: <strong class="text-emerald">Tomorrow (Dry Recyclables)</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="resident-eco-col">
+            <div class="eco-points-badge">
+              <span class="points-val" id="residentBannerPoints">1,240</span>
+              <span class="points-lbl">Eco-Reward Points</span>
+            </div>
+            <div class="eco-stat-small">
+              <span>Recycled: <strong id="residentTotalRecycled">84.5 kg</strong></span>
+              <span>Pickup Requests: <strong id="residentTotalPickups">14 completed</strong></span>
+            </div>
+            <button class="btn btn-sm btn-outline" id="redeemPointsBtn">Redeem Rewards</button>
+          </div>
+        </div>
+
+        <!-- Inner Subtabs for Function 1 -->
+        <div class="subtab-bar">
+          <button class="subtab-btn active" data-f1sub="active-requests">Active Requests & Live Tracker</button>
+          <button class="subtab-btn" data-f1sub="collection-history">Collection History & Receipts</button>
+          <button class="subtab-btn" data-f1sub="schedules">Zone Collection Schedules</button>
+        </div>
+
+        <!-- Subtab Content 1: Active Requests & Visual Tracker -->
+        <div class="f1-subpane active" id="f1-active-requests">
+          <div class="section-top-row">
+            <div>
+              <h2 class="section-title">Active Waste Pickup Requests</h2>
+              <p class="section-subtitle">Real-time stepped tracker from submission to crew weighing and processing</p>
+            </div>
+            <div class="filter-group">
+              <select id="requestCategoryFilter" class="filter-select">
+                <option value="all">All Categories</option>
+                <option value="Organic Waste">Organic Waste</option>
+                <option value="Plastic Recyclable">Plastic Recyclable</option>
+                <option value="Paper & Cardboard">Paper & Cardboard</option>
+                <option value="E-Waste">E-Waste</option>
+                <option value="Glass & Metal">Glass & Metal</option>
+                <option value="Hazardous Household">Hazardous Household</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="request-cards-container" id="f1RequestCardsList">
+            <!-- Dynamic Active Request Cards with Stepper Progress -->
+          </div>
+        </div>
+
+        <!-- Subtab Content 2: Collection History -->
+        <div class="f1-subpane" id="f1-collection-history">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h2 class="card-title">Past Collection History & Audit Log</h2>
+                <p class="card-subtitle">Verified collected weight, timestamps, crew logs, and eco-points awarded</p>
+              </div>
+              <div class="table-search-box">
+                <input type="text" id="historySearchInput" placeholder="Search by request ID or waste type..." class="input-text">
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table" id="f1HistoryTable">
+                  <thead>
+                    <tr>
+                      <th>Request ID</th>
+                      <th>Waste Category</th>
+                      <th>Estimated vs Actual</th>
+                      <th>Scheduled Date</th>
+                      <th>Assigned Crew</th>
+                      <th>Status</th>
+                      <th>Eco-Points</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="f1HistoryTableBody">
+                    <!-- Dynamic History Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtab Content 3: Collection Schedules -->
+        <div class="f1-subpane" id="f1-schedules">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Weekly Municipal Route Schedules</h2>
+                <p class="card-subtitle">Check designated collection days for your neighborhood zone</p>
+              </div>
+              <div class="zone-pill-group" id="scheduleZonePills">
+                <button class="pill-btn active" data-zone="Colombo Fort">Colombo Fort</button>
+                <button class="pill-btn" data-zone="Kollupitiya">Kollupitiya</button>
+                <button class="pill-btn" data-zone="Borella">Borella</button>
+                <button class="pill-btn" data-zone="Wellawatte">Wellawatte</button>
+                <button class="pill-btn" data-zone="Dehiwala">Dehiwala</button>
+                <button class="pill-btn" data-zone="Kotte">Kotte</button>
+                <button class="pill-btn" data-zone="Nugegoda">Nugegoda</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="schedule-grid" id="zoneScheduleGrid">
+                <!-- Dynamic Schedule Cards by Day of Week -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 2: FUNCTION 2 - COLLECTION SCHEDULING & CREW MGMT   -->
+      <!-- ======================================================== -->
+      <section class="tab-pane" id="tab-function2">
+        <div class="pane-header">
+          <div class="pane-title-group">
+            <div class="tag-badge info">FUNCTION 2</div>
+            <h1 class="pane-title">Collection Scheduling & Crew Management</h1>
+            <p class="pane-subtitle">Fleet dispatching, daily route manifests, crew assignment, weight recording, and missed collection logging.</p>
+          </div>
+          <div class="pane-actions">
+            <button class="btn btn-outline" id="addPersonnelBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              <span>+ Add Operations Personnel</span>
+            </button>
+            <button class="btn btn-secondary" id="createNewScheduleBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span>+ Create Route Schedule</span>
+            </button>
+            <button class="btn btn-primary" id="registerCrewBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              <span>+ Register New Crew</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Inner Subtabs for Function 2 -->
+        <div class="subtab-bar">
+          <button class="subtab-btn active" data-f2sub="daily-jobs">Daily Collection Jobs (Crew Manifest)</button>
+          <button class="subtab-btn" data-f2sub="crew-roster">Fleet & Collection Teams</button>
+          <button class="subtab-btn" data-f2sub="personnel-roster">Operations Personnel Roster</button>
+          <button class="subtab-btn" data-f2sub="dispatch-board">Request Dispatch & Zone Allocation</button>
+          <button class="subtab-btn" data-f2sub="schedules-planner">Master Route Schedules</button>
+        </div>
+
+        <!-- F2 Subtab 1: Daily Collection Jobs -->
+        <div class="f2-subpane active" id="f2-daily-jobs">
+          <div class="crew-portal-alert">
+            <div class="alert-icon">🚛</div>
+            <div class="alert-content">
+              <strong>Crew Portal View:</strong> Currently showing assigned stops for 
+              <span class="crew-select-inline">
+                <select id="activeCrewSelector" class="crew-dropdown">
+                  <!-- Dynamic crew options -->
+                </select>
+              </span>
+              <span class="text-muted">Crews can mark arrival, record actual weighed kilograms, or flag missed collections.</span>
+            </div>
+          </div>
+
+          <div class="daily-jobs-container mt-3" id="dailyJobsList">
+            <!-- Dynamic Job Cards with Complete / Missed action buttons -->
+          </div>
+        </div>
+
+        <!-- F2 Subtab 2: Fleet & Collection Teams -->
+        <div class="f2-subpane" id="f2-crew-roster">
+          <div class="section-top-row">
+            <div>
+              <h2 class="section-title">Municipal Collection Fleet & Crews</h2>
+              <p class="section-subtitle">Manage crew members, vehicle tonnage, GPS zones, and duty statuses</p>
+            </div>
+          </div>
+          <div class="crew-grid" id="crewCardsGrid">
+            <!-- Dynamic Crew Cards -->
+          </div>
+        </div>
+
+        <!-- F2 Subtab 3: Dispatch & Assignment Board -->
+        <div class="f2-subpane" id="f2-dispatch-board">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Unassigned Request Dispatch Queue</h2>
+                <p class="card-subtitle">Match incoming citizen requests to optimal collection trucks</p>
+              </div>
+              <span class="badge" id="unassignedCountBadge">0 Pending Dispatch</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Resident / Business</th>
+                      <th>Waste Stream</th>
+                      <th>Est. Qty</th>
+                      <th>Zone</th>
+                      <th>Requested Date</th>
+                      <th>Assign to Crew</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dispatchQueueTableBody">
+                    <!-- Dynamic Dispatch Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- F2 Subtab 4: Master Route Schedules -->
+        <div class="f2-subpane" id="f2-schedules-planner">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Recurring Route Schedules Master Table</h2>
+                <p class="card-subtitle">Active municipal schedules organized by zone and stream</p>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Schedule ID</th>
+                      <th>Zone</th>
+                      <th>Target Stream</th>
+                      <th>Day of Week</th>
+                      <th>Time Slot</th>
+                      <th>Assigned Crew & Truck</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="masterSchedulesTableBody">
+                    <!-- Dynamic master schedule rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- F2 Subtab 5: Operations Personnel Roster (Crew Leaders, Drivers & Managers) -->
+        <div class="f2-subpane" id="f2-personnel-roster">
+          <div class="section-top-row">
+            <div>
+              <h2 class="section-title">Operations Personnel & Field Leadership Roster</h2>
+              <p class="section-subtitle">Manage certified Crew Leaders, Heavy Vehicle Drivers, and Recycling Center Managers coordinating municipal logistics</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="subtabAddPersonnelBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                <span>+ Add Personnel</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Personnel KPI Summary Row -->
+          <div class="personnel-kpi-row">
+            <div class="personnel-kpi-card">
+              <div class="personnel-kpi-val" id="kpiTotalPersonnel">0</div>
+              <div class="personnel-kpi-lbl">Total Operations Staff</div>
+            </div>
+            <div class="personnel-kpi-card">
+              <div class="personnel-kpi-val text-amber" id="kpiCrewLeaders">0</div>
+              <div class="personnel-kpi-lbl">🎖️ Crew Leaders</div>
+            </div>
+            <div class="personnel-kpi-card">
+              <div class="personnel-kpi-val text-cyan" id="kpiDrivers">0</div>
+              <div class="personnel-kpi-lbl">🚛 Fleet Drivers</div>
+            </div>
+            <div class="personnel-kpi-card">
+              <div class="personnel-kpi-val text-emerald" id="kpiCenterManagers">0</div>
+              <div class="personnel-kpi-lbl">♻️ Recycling Center Managers</div>
+            </div>
+          </div>
+
+          <!-- Search & Filter Controls -->
+          <div class="personnel-controls-bar">
+            <div class="personnel-search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="personnelSearchInput" class="form-input" placeholder="Search staff by name, phone, zone, or assignment...">
+            </div>
+            <div class="personnel-filter-pills" id="personnelRoleFilterPills">
+              <button class="pill-btn active" data-role-filter="all">All Staff</button>
+              <button class="pill-btn" data-role-filter="Crew Leader">🎖️ Crew Leaders</button>
+              <button class="pill-btn" data-role-filter="Driver">🚛 Drivers</button>
+              <button class="pill-btn" data-role-filter="Recycling Center Manager">♻️ Center Managers</button>
+            </div>
+          </div>
+
+          <!-- Personnel Directory Grid -->
+          <div class="personnel-grid" id="personnelCardsGrid">
+            <!-- Dynamic Personnel Cards rendered by app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 3: FUNCTION 3 - SEGREGATION & RECYCLING MANAGEMENT   -->
+      <!-- ======================================================== -->
+      <section class="tab-pane" id="tab-function3">
+        <div class="pane-header">
+          <div class="pane-title-group">
+            <div class="tag-badge emerald">FUNCTION 3</div>
+            <h1 class="pane-title">Waste Segregation & Recycling Management</h1>
+            <p class="pane-subtitle">Interactive segregation guidance, material recovery facilities (MRFs), batch allocation, yields, and audit trails.</p>
+          </div>
+          <div class="pane-actions">
+            <button class="btn btn-secondary" id="openIntakeModalBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              <span>+ Record Recyclable Batch</span>
+            </button>
+            <button class="btn btn-primary" id="openFacilityModalBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <span>+ Register Recycling Centre</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Inner Subtabs for Function 3 -->
+        <div class="subtab-bar">
+          <button class="subtab-btn active" data-f3sub="segregation-guide">Segregation Guidance & Categories</button>
+          <button class="subtab-btn" data-f3sub="recycling-batches">Recyclable Batches & Allocation</button>
+          <button class="subtab-btn" data-f3sub="facilities">Recycling Centres Directory</button>
+          <button class="subtab-btn" data-f3sub="recycling-history">Processing Yields & History</button>
+        </div>
+
+        <!-- F3 Subtab 1: Interactive Segregation Guide & Categories -->
+        <div class="f3-subpane active" id="f3-segregation-guide">
+          <!-- Live Item Lookup Box -->
+          <div class="search-guide-hero">
+            <div class="search-hero-content">
+              <h2>Smart Waste Segregation Wizard</h2>
+              <p>Type any item (e.g., "milk carton", "pizza box", "lithium battery", "banana peel") to get instant bin classification, prep instructions, and recycling potential.</p>
+              <div class="guide-search-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="segregationSearchInput" placeholder="Search item (e.g. plastic bottle, egg carton, battery, paint)..." class="guide-search-input">
+                <button class="btn btn-sm btn-outline" id="clearSegregationSearch">Clear</button>
+                <button class="btn btn-sm btn-primary" id="openAddSegItemBtn">+ Add Item</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Segregation Filter Chips -->
+          <div class="bin-filter-chips" id="binFilterChips">
+            <button class="bin-chip active" data-bin="all">All Items</button>
+            <button class="bin-chip green" data-bin="organic">🟢 Green Bin (Organic / Compost)</button>
+            <button class="bin-chip blue" data-bin="paper">🔵 Blue Bin (Paper & Fiber)</button>
+            <button class="bin-chip yellow" data-bin="plastic">🟡 Yellow Bin (Rigid Plastics)</button>
+            <button class="bin-chip cyan" data-bin="glass-metal">⚪ Silver Bin (Metal & Glass)</button>
+            <button class="bin-chip red" data-bin="hazard">🔴 Red / Special (E-Waste & Hazardous)</button>
+          </div>
+
+          <!-- Segregation Guide Item Cards -->
+          <div class="guide-cards-grid" id="segregationGuideGrid">
+            <!-- Dynamic item cards with bin color badges & instructions -->
+          </div>
+
+          <!-- Master Waste Categories Breakdown -->
+          <div class="card mt-4">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Official Municipal Waste Streams & Sorting Standards</h2>
+                <p class="card-subtitle">Standardized disposal instructions and recyclability index</p>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Stream Category</th>
+                      <th>Bin Color</th>
+                      <th>Accepted Materials</th>
+                      <th>Prohibited Items</th>
+                      <th>Preparation Rule</th>
+                      <th>Recyclability Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody id="wasteCategoriesTableBody">
+                    <!-- Dynamic Master Categories -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- F3 Subtab 2: Recyclable Batches & Center Allocation -->
+        <div class="f3-subpane" id="f3-recycling-batches">
+          <div class="section-top-row">
+            <div>
+              <h2 class="section-title">Collected Recyclable Batches (In Yard)</h2>
+              <p class="section-subtitle">Segregated material ready to be allocated and shipped to specialized processing facilities</p>
+            </div>
+            <button class="btn btn-sm btn-outline" id="quickAddBatchBtn">+ Log Incoming Batch</button>
+          </div>
+
+          <div class="batch-cards-grid" id="recyclableBatchesContainer">
+            <!-- Dynamic Batch Cards with "Allocate to Center" & "Confirm Recycler Collection" -->
+          </div>
+        </div>
+
+        <!-- F3 Subtab 3: Recycling Centres Directory -->
+        <div class="f3-subpane" id="f3-facilities">
+          <div class="section-top-row">
+            <div>
+              <h2 class="section-title">Certified Partner Recycling Facilities & MRFs</h2>
+              <p class="section-subtitle">Authorized processing plants, composting hubs, and certified smelters</p>
+            </div>
+          </div>
+
+          <div class="facilities-grid" id="recyclingFacilitiesGrid">
+            <!-- Dynamic Facility Cards with capacity bars & accepted materials -->
+          </div>
+        </div>
+
+        <!-- F3 Subtab 4: Recycling Yields & Audit History -->
+        <div class="f3-subpane" id="f3-recycling-history">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Recycling Processing Quantities & Yield Logs</h2>
+                <p class="card-subtitle">Raw input tonnage vs recovered materials yield, recovery %, and carbon offsets</p>
+              </div>
+              <button class="btn btn-sm btn-outline" id="exportRecyclingReportBtn">Export CSV Report</button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Batch ID</th>
+                      <th>Material Stream</th>
+                      <th>Recycling Facility</th>
+                      <th>Gross Input (kg)</th>
+                      <th>Recovered Yield (kg)</th>
+                      <th>Recovery %</th>
+                      <th>CO₂ Offset (kg)</th>
+                      <th>Verification Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recyclingHistoryTableBody">
+                    <!-- Dynamic Processing Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 4: FUNCTION 4 - MONITORING, COMPLAINTS & ANALYTICS   -->
+      <!-- ======================================================== -->
+      <section class="tab-pane" id="tab-function4">
+        <div class="pane-header">
+          <div class="pane-title-group">
+            <div class="tag-badge purple">FUNCTION 4</div>
+            <h1 class="pane-title">Monitoring, Complaints & Analytics</h1>
+            <p class="pane-subtitle">Citizen complaint triage, missed collection tracking, user administration, area reports, and fleet KPI analytics.</p>
+          </div>
+          <div class="pane-actions">
+            <button class="btn btn-secondary" id="f4NewComplaintBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>+ Lodge Complaint</span>
+            </button>
+            <button class="btn btn-primary" id="f4NewUserBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              <span>+ Register User</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Inner Subtabs for Function 4 -->
+        <div class="subtab-bar">
+          <button class="subtab-btn active" data-f4sub="complaints-triage">Complaints Management</button>
+          <button class="subtab-btn" data-f4sub="missed-collections">Missed Collections Tracker</button>
+          <button class="subtab-btn" data-f4sub="user-admin">User Administration</button>
+          <button class="subtab-btn" data-f4sub="area-analytics">Area-Based & Fleet Reports</button>
+        </div>
+
+        <!-- F4 Subtab 1: Complaints Management -->
+        <div class="f4-subpane active" id="f4-complaints-triage">
+          <div class="section-top-row">
+            <div>
+              <h2 class="section-title">Citizen Grievance & Issue Triage</h2>
+              <p class="section-subtitle">Track reports for missed pickups, spillage, hazardous items, and driver conduct</p>
+            </div>
+            <div class="filter-group">
+              <select id="complaintStatusFilter" class="filter-select">
+                <option value="all">All Statuses</option>
+                <option value="Open">Open / Pending</option>
+                <option value="In Progress">In Investigation</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="complaints-grid" id="complaintsCardsContainer">
+            <!-- Dynamic Complaint Cards with resolution tools -->
+          </div>
+        </div>
+
+        <!-- F4 Subtab 2: Missed Collections Tracker -->
+        <div class="f4-subpane" id="f4-missed-collections">
+          <div class="missed-alert-banner">
+            <div class="alert-icon">⚠️</div>
+            <div>
+              <strong>Missed Collection Auto-Detection:</strong>
+              <p>Whenever a collection team flags a stop as "Missed / Failed" (e.g. gate locked, hazardous contamination, vehicle breakdown), it enters this high-priority escalation log for immediate rescheduling or dispatch re-routing.</p>
+            </div>
+          </div>
+
+          <div class="card mt-3">
+            <div class="card-header">
+              <h2 class="card-title">Active Missed / Failed Collections</h2>
+              <span class="badge warn-badge" id="missedCountBadge">0 Escalations</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Ref ID</th>
+                      <th>Location / Address</th>
+                      <th>Zone</th>
+                      <th>Crew Responsible</th>
+                      <th>Failure Reason</th>
+                      <th>Date / Time</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="missedCollectionsTableBody">
+                    <!-- Dynamic Missed Rows with Reassign button -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- F4 Subtab 3: User Administration -->
+        <div class="f4-subpane" id="f4-user-admin">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Municipal User Directory & Access Control</h2>
+                <p class="card-subtitle">Manage residents, commercial entities, drivers, plant managers, and dispatchers</p>
+              </div>
+              <div class="table-search-box">
+                <input type="text" id="userAdminSearchInput" placeholder="Filter users by name, role or zone..." class="input-text">
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>User ID</th>
+                      <th>Full Name / Entity</th>
+                      <th>Email / Contact</th>
+                      <th>Assigned Role</th>
+                      <th>Zone</th>
+                      <th>Status</th>
+                      <th>Registered On</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userAdminTableBody">
+                    <!-- Dynamic User Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- F4 Subtab 4: Area-Based & Fleet Performance Reports -->
+        <div class="f4-subpane" id="f4-area-analytics">
+          <div class="grid-2-col">
+            <!-- Zone Comparison Report Table -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Area-Based Waste Generation & Compliance</h2>
+                  <p class="card-subtitle">Zone-by-zone comparison of volume, diversion, and compliance scores</p>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Zone</th>
+                        <th>Collected (Tons)</th>
+                        <th>Diversion %</th>
+                        <th>Missed Rate</th>
+                        <th>Segregation Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody id="areaComparisonTableBody">
+                      <!-- Dynamic Area rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fleet Crew Efficiency Report -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Collection Fleet Efficiency & On-Time Rate</h2>
+                  <p class="card-subtitle">Performance ratings and pickup completion speed</p>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Crew</th>
+                        <th>Vehicle</th>
+                        <th>Completed Stops</th>
+                        <th>Avg Time / Stop</th>
+                        <th>On-Time %</th>
+                        <th>Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody id="fleetPerformanceTableBody">
+                      <!-- Dynamic Fleet rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary Analytics Visual: Canvas Bar Chart for Zone Tonnage -->
+          <div class="card mt-4">
+            <div class="card-header">
+              <h2 class="card-title">Monthly Waste Generation vs Recovery Yield by Zone</h2>
+              <span class="card-badge">Analytics Insight</span>
+            </div>
+            <div class="card-body">
+              <canvas id="areaBarChartCanvas" width="900" height="260" class="full-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODALS CONTAINER                                         -->
+  <!-- ======================================================== -->
+
+  <!-- Modal 0: How It Works / Interactive System Guide -->
+  <div class="modal-backdrop" id="howItWorksModal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon emerald-bg">📖</div>
+          <div>
+            <h3 class="modal-title">How EcoPulse Works (1-Minute Guide)</h3>
+            <p class="modal-subtitle">The seamless 3-step cycle of sustainable waste collection & recycling</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="guide-steps-grid">
+          <div class="guide-step-card">
+            <div class="step-num">Step 1</div>
+            <div class="step-icon">👤 🗑️</div>
+            <h4>Citizen Schedules Pickup</h4>
+            <p>Pick your waste category (Plastic, Paper, Organic, E-Waste) with 1 click, choose a date, and optionally snap a photo.</p>
+            <span class="step-tag">Resident Portal (F1)</span>
+          </div>
+          <div class="guide-step-card">
+            <div class="step-num">Step 2</div>
+            <div class="step-icon">🚛 ⚖️</div>
+            <h4>Crew Collects & Weighs</h4>
+            <p>Municipal trucks follow optimized zone routes, verify segregated bins, weigh the material, and confirm collection.</p>
+            <span class="step-tag">Driver Manifest (F2)</span>
+          </div>
+          <div class="guide-step-card">
+            <div class="step-num">Step 3</div>
+            <div class="step-icon">♻️ ⭐</div>
+            <h4>Recycling & Eco-Rewards</h4>
+            <p>Yard allocates sorted batches to partner recycling plants, calculating CO₂ avoided and awarding green points to residents.</p>
+            <span class="step-tag">Recovery & Yields (F3)</span>
+          </div>
+        </div>
+        <div class="quick-try-box">
+          <div class="quick-try-text">
+            <strong>Want to explore with real sample data right now?</strong>
+            <p>Populate complete demonstration requests, crew trucks, routes, and recycling batches in 1 second.</p>
+          </div>
+          <button type="button" class="btn btn-primary" id="guideLoadSampleBtn">✨ Load Demo Data Now</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Close Guide</button>
+        <button type="button" class="btn btn-primary" id="guideStartActionBtn">🚀 Request a Pickup Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 1: Request Waste Pickup (Function 1) -->
+  <div class="modal-backdrop" id="requestPickupModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon emerald-bg">🗑️</div>
+          <div>
+            <h3 class="modal-title">Request Waste Pickup</h3>
+            <p class="modal-subtitle">Submit a scheduled or on-demand waste collection request</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="pickupRequestForm" class="modal-body">
+        <!-- 1-Tap Category Fast Picker -->
+        <div class="form-group mb-3">
+          <label class="form-label">Quick Select Category (1-Tap):</label>
+          <div class="quick-category-chips" id="quickCategoryChips">
+            <button type="button" class="cat-chip active" data-cat="Plastic Recyclable">🧴 Plastic</button>
+            <button type="button" class="cat-chip" data-cat="Paper & Cardboard">📦 Cardboard</button>
+            <button type="button" class="cat-chip" data-cat="Organic Waste">🍃 Organic</button>
+            <button type="button" class="cat-chip" data-cat="Glass & Metal">🥫 Glass & Metal</button>
+            <button type="button" class="cat-chip" data-cat="E-Waste">⚡ E-Waste</button>
+            <button type="button" class="cat-chip" data-cat="Hazardous Household">⚠️ Hazardous</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="reqWasteCategory" class="form-label">Waste Category <span class="req">*</span></label>
+            <select id="reqWasteCategory" class="form-input" required>
+              <option value="Plastic Recyclable">Plastic Recyclables (Bottles, Containers)</option>
+              <option value="Paper & Cardboard">Paper & Cardboard</option>
+              <option value="Organic Waste">Organic / Food Waste</option>
+              <option value="Glass & Metal">Glass Bottles & Metal Cans</option>
+              <option value="E-Waste">E-Waste (Electronics, Batteries)</option>
+              <option value="Hazardous Household">Hazardous Household (Paints, Chemicals)</option>
+              <option value="Bulky Furniture">Bulky Household Waste</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="reqEstimatedQty" class="form-label">Estimated Quantity (kg) <span class="req">*</span></label>
+            <input type="number" id="reqEstimatedQty" class="form-input" min="1" max="1000" placeholder="e.g. 10" value="10" required>
+            <div class="quick-qty-chips" id="quickQtyChips">
+              <button type="button" class="qty-chip" data-qty="5">5 kg</button>
+              <button type="button" class="qty-chip active" data-qty="10">10 kg</button>
+              <button type="button" class="qty-chip" data-qty="25">25 kg</button>
+              <button type="button" class="qty-chip" data-qty="50">50 kg</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="reqPickupDate" class="form-label">Preferred Date <span class="req">*</span></label>
+            <input type="date" id="reqPickupDate" class="form-input" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="reqTimeSlot" class="form-label">Time Window</label>
+            <select id="reqTimeSlot" class="form-input">
+              <option value="Morning (08:00 - 12:00)">Morning (08:00 - 12:00)</option>
+              <option value="Afternoon (13:00 - 17:00)">Afternoon (13:00 - 17:00)</option>
+              <option value="Evening (17:00 - 20:00)">Evening (17:00 - 20:00)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reqPickupAddress" class="form-label">Pickup Address & Zone <span class="req">*</span></label>
+          <div class="form-row">
+            <input type="text" id="reqPickupAddress" class="form-input flex-2" placeholder="Street Address / Building" value="12 Galle Road, Colombo" required>
+            <select id="reqPickupZone" class="form-input flex-1" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Image Upload Feature with Instant Preview -->
+        <div class="form-group">
+          <label class="form-label">Upload Waste Image <span class="text-muted">(Supports camera/file upload)</span></label>
+          <div class="upload-dropzone" id="wasteImageDropzone">
+            <input type="file" id="reqImageFileInput" accept="image/*" class="file-hidden-input">
+            <div class="dropzone-content" id="dropzonePrompt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <p>Click or drag & drop photo of waste to verify volume</p>
+              <span class="file-hint">JPG, PNG, WebP up to 5MB</span>
+            </div>
+            <div class="dropzone-preview hidden" id="dropzonePreviewWrap">
+              <img src="" alt="Waste Preview" id="wasteImagePreviewImg" class="preview-img">
+              <button type="button" class="btn-remove-preview" id="removeImagePreviewBtn">&times; Remove</button>
+            </div>
+          </div>
+          <!-- Sample image preset helper -->
+          <div class="preset-img-row">
+            <span class="preset-hint">Quick test photo presets:</span>
+            <button type="button" class="preset-btn" data-img-preset="plastic">🧴 Plastic Bottles</button>
+            <button type="button" class="preset-btn" data-img-preset="cardboard">📦 Cardboard Boxes</button>
+            <button type="button" class="preset-btn" data-img-preset="ewaste">💻 Old Electronics</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reqSpecialNotes" class="form-label">Special Notes / Access Instructions</label>
+          <textarea id="reqSpecialNotes" class="form-textarea" rows="2" placeholder="e.g., Gate code is #1244, bags are left next to curbside entrance..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Pickup Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Record Collected Quantity / Mark Missed (Function 2) -->
+  <div class="modal-backdrop" id="recordCollectionModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon blue-bg">⚖️</div>
+          <div>
+            <h3 class="modal-title">Record Collection Quantity</h3>
+            <p class="modal-subtitle" id="recordCollectionSubtitle">Update stop status, weigh collected waste, or record failure</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="recordCollectionForm" class="modal-body">
+        <input type="hidden" id="colJobId">
+
+        <div class="job-detail-banner" id="colJobDetailsSummary">
+          <!-- Injected info -->
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Collection Outcome <span class="req">*</span></label>
+          <div class="radio-toggle-group">
+            <label class="radio-label">
+              <input type="radio" name="colOutcome" value="Completed" checked>
+              <span class="radio-custom green">✅ Successfully Collected & Weighed</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="colOutcome" value="Missed">
+              <span class="radio-custom red">⚠️ Missed / Failed Collection</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Success Section: Actual Weight Input -->
+        <div class="outcome-section" id="outcomeCompletedFields">
+          <div class="form-group">
+            <label for="colActualWeight" class="form-label">Verified Scale Weight (kg) <span class="req">*</span></label>
+            <div class="input-with-suffix">
+              <input type="number" id="colActualWeight" class="form-input" step="0.1" min="0.1" max="5000" placeholder="e.g. 18.5">
+              <span class="input-suffix">kg</span>
+            </div>
+            <span class="form-help">Actual weight logged into municipal scales and credited to resident account.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="colSegregationQuality" class="form-label">Segregation Compliance Grade</label>
+            <select id="colSegregationQuality" class="form-input">
+              <option value="Grade A - Excellent (Clean)">Grade A - Excellent (Pure segregation)</option>
+              <option value="Grade B - Good (Minor contamination)">Grade B - Good (Minor contamination)</option>
+              <option value="Grade C - Fair (Needs sorting)">Grade C - Fair (Needs sorting)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Failure Section: Missed Reason Input -->
+        <div class="outcome-section hidden" id="outcomeMissedFields">
+          <div class="form-group">
+            <label for="colMissedReason" class="form-label">Reason for Missed Collection <span class="req">*</span></label>
+            <select id="colMissedReason" class="form-input">
+              <option value="Gate locked / No access">Gate locked / No access</option>
+              <option value="Severe contamination with bio-hazard">Severe contamination with bio-hazard</option>
+              <option value="Waste not placed at designated curb">Waste not placed at designated curb</option>
+              <option value="Overweight / Exceeds vehicle load limit">Overweight / Exceeds vehicle load limit</option>
+              <option value="Resident cancelled / requested rescheduling">Resident cancelled / requested rescheduling</option>
+              <option value="Severe weather / Obstruction">Severe weather / Obstruction</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="colMissedNotes" class="form-label">Incident Notes & Escalation</label>
+            <textarea id="colMissedNotes" class="form-textarea" rows="2" placeholder="Explain details for dispatcher investigation..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveCollectionBtn">Confirm & Update Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Allocate Recyclable Batch (Function 3) -->
+  <div class="modal-backdrop" id="allocateBatchModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon amber-bg">♻️</div>
+          <div>
+            <h3 class="modal-title">Allocate Batch to Recycling Centre</h3>
+            <p class="modal-subtitle">Transfer segregated municipal waste to a certified recycling partner</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="allocateBatchForm" class="modal-body">
+        <input type="hidden" id="allocBatchId">
+        <div class="job-detail-banner" id="allocBatchSummary"></div>
+
+        <div class="form-group">
+          <label for="allocTargetFacility" class="form-label">Select Certified Processing Facility <span class="req">*</span></label>
+          <select id="allocTargetFacility" class="form-input" required>
+            <!-- Dynamic facility options -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="allocDispatchDate" class="form-label">Transfer Date <span class="req">*</span></label>
+          <input type="date" id="allocDispatchDate" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label for="allocCarrierVehicle" class="form-label">Assigned Transport Truck / Carrier</label>
+          <input type="text" id="allocCarrierVehicle" class="form-input" value="Freight Truck TR-904" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Confirm Allocation & Dispatch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Record Recycling Processing Yield (Function 3) -->
+  <div class="modal-backdrop" id="recordYieldModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon green-bg">📊</div>
+          <div>
+            <h3 class="modal-title">Confirm Recycler Intake & Processing Yield</h3>
+            <p class="modal-subtitle">Log recovered material quantities and verify carbon offset</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="recordYieldForm" class="modal-body">
+        <input type="hidden" id="yieldBatchId">
+        <div class="job-detail-banner" id="yieldBatchSummary"></div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="yieldGrossWeight" class="form-label">Gross Received (kg)</label>
+            <input type="number" id="yieldGrossWeight" class="form-input" readonly>
+          </div>
+          <div class="form-group flex-1">
+            <label for="yieldRecoveredWeight" class="form-label">Recovered Clean Yield (kg) <span class="req">*</span></label>
+            <input type="number" id="yieldRecoveredWeight" class="form-input" step="0.1" min="1" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="yieldInspector" class="form-label">Facility Quality Inspector / Sign-Off <span class="req">*</span></label>
+          <input type="text" id="yieldInspector" class="form-input" value="Eng. Clara Vance (Certified MRF Lead)" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Certify & Save Yield</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Lodge Complaint / Incident (Function 4) -->
+  <div class="modal-backdrop" id="complaintModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon red-bg">⚠️</div>
+          <div>
+            <h3 class="modal-title">Lodge Grievance / Service Incident</h3>
+            <p class="modal-subtitle">Submit feedback or report issues regarding municipal waste collection</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="complaintForm" class="modal-body">
+        <div class="form-group">
+          <label for="compType" class="form-label">Incident Category <span class="req">*</span></label>
+          <select id="compType" class="form-input" required>
+            <option value="Missed Regular Collection">Missed Regular Collection</option>
+            <option value="Curbside Spillage / Litter Left Behind">Curbside Spillage / Litter Left Behind</option>
+            <option value="Damaged Waste Bin">Damaged Waste Bin during collection</option>
+            <option value="Delayed Crew / Irregular Schedule">Delayed Crew / Irregular Schedule</option>
+            <option value="Unprofessional Crew Conduct">Unprofessional Crew Conduct</option>
+            <option value="Illegal Dumping / Fly Tipping">Illegal Dumping in Public Space</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="compLocation" class="form-label">Incident Location / Address <span class="req">*</span></label>
+            <input type="text" id="compLocation" class="form-input" placeholder="e.g. Corner of Oak St and 5th Ave" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="compZone" class="form-label">Zone <span class="req">*</span></label>
+            <select id="compZone" class="form-input" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="compPriority" class="form-label">Urgency Priority</label>
+          <select id="compPriority" class="form-input">
+            <option value="Medium">Medium (Within 24 hours)</option>
+            <option value="High">High (Health / Spill hazard - immediate)</option>
+            <option value="Low">Low (General inquiry)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="compDetails" class="form-label">Detailed Description <span class="req">*</span></label>
+          <textarea id="compDetails" class="form-textarea" rows="3" placeholder="Provide as much context as possible..." required></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-danger">File Incident Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6: Create New Route Schedule (Function 2) -->
+  <div class="modal-backdrop" id="createScheduleModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon blue-bg">📅</div>
+          <div>
+            <h3 class="modal-title">Create Route Collection Schedule</h3>
+            <p class="modal-subtitle">Establish recurring municipal collection routes</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="createScheduleForm" class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="schedZone" class="form-label">Target Zone <span class="req">*</span></label>
+            <select id="schedZone" class="form-input" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="schedStream" class="form-label">Waste Category <span class="req">*</span></label>
+            <select id="schedStream" class="form-input" required>
+              <option value="Organic Waste">Organic / Compostable</option>
+              <option value="Plastic & Dry Recyclables">Plastic & Dry Recyclables</option>
+              <option value="Paper & Cardboard">Paper & Cardboard</option>
+              <option value="Glass & Metal">Glass & Metal</option>
+              <option value="General Residual">General Residual</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="schedDay" class="form-label">Day of Week <span class="req">*</span></label>
+            <select id="schedDay" class="form-input" required>
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="schedTimeSlot" class="form-label">Time Window <span class="req">*</span></label>
+            <input type="text" id="schedTimeSlot" class="form-input" value="07:00 - 11:30 AM" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="schedCrew" class="form-label">Assign Fleet Crew <span class="req">*</span></label>
+          <select id="schedCrew" class="form-input" required>
+            <!-- Dynamic crew options -->
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Publish Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: Register User (Function 4) -->
+  <div class="modal-backdrop" id="registerUserModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon emerald-bg">👤</div>
+          <div>
+            <h3 class="modal-title">Register Municipal User</h3>
+            <p class="modal-subtitle">Add citizen, commercial business, or crew operator profile</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="registerUserForm" class="modal-body">
+        <div class="form-group">
+          <label for="newUserFullName" class="form-label">Full Name / Entity Name <span class="req">*</span></label>
+          <input type="text" id="newUserFullName" class="form-input" placeholder="e.g. Jordan Lee" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newUserEmail" class="form-label">Email Address <span class="req">*</span></label>
+            <input type="email" id="newUserEmail" class="form-input" placeholder="name@domain.com" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newUserPhone" class="form-label">Phone Number <span class="req">*</span></label>
+            <input type="tel" id="newUserPhone" class="form-input" placeholder="+1 (555) 000-0000" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newUserRole" class="form-label">System Role <span class="req">*</span></label>
+            <select id="newUserRole" class="form-input" required>
+              <option value="Resident">Resident</option>
+              <option value="Business">Commercial Business</option>
+              <option value="Crew Driver">Crew Driver / Field Worker</option>
+              <option value="Recycler">Recycling Center Operator</option>
+              <option value="Admin">Municipal Admin</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newUserZone" class="form-label">Assigned Zone <span class="req">*</span></label>
+            <select id="newUserZone" class="form-input" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newUserAddress" class="form-label">Street / Curbside Address <span class="req">*</span></label>
+          <input type="text" id="newUserAddress" class="form-input" placeholder="e.g. 45 Park Street, Colombo 02" required>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.875rem; margin-top:4px;">
+            <input type="checkbox" id="newUserSetActive" checked>
+            <span>Set as active logged-in account now (pre-fills pickup requests)</span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 8: User Profile Details (Function 1) -->
+  <div class="modal-backdrop" id="userProfileModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon emerald-bg">👤</div>
+          <div>
+            <h3 class="modal-title">Citizen & Entity Profile</h3>
+            <p class="modal-subtitle">Manage residential account, zone allocation, and eco-rewards</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body" id="userProfileModalContent">
+        <!-- Injected via JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 9: Register Collection Crew (Function 2) -->
+  <div class="modal-backdrop" id="registerCrewModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon blue-bg">🚛</div>
+          <div>
+            <h3 class="modal-title">Register Collection Fleet Crew</h3>
+            <p class="modal-subtitle">Add a collection team, lead driver, vehicle, and zone</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="registerCrewForm" class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="newCrewName" class="form-label">Team / Crew Name <span class="req">*</span></label>
+            <input type="text" id="newCrewName" class="form-input" placeholder="e.g. Crew #6 (Omega Recycler)" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newCrewZone" class="form-label">Assigned Zone <span class="req">*</span></label>
+            <select id="newCrewZone" class="form-input" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section-title" style="font-size:0.82rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.04em; margin: 10px 0 6px 0;">
+          👥 Assigned Operations Personnel & Field Roles
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newCrewLeader" class="form-label">🎖️ Crew Leader / Supervisor <span class="req">*</span></label>
+            <input type="text" id="newCrewLeader" list="crewLeaderList" class="form-input" placeholder="Select or type Leader name" required>
+            <datalist id="crewLeaderList"></datalist>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Route & compliance supervisor</small>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newCrewDriver" class="form-label">🚛 Heavy Vehicle Driver <span class="req">*</span></label>
+            <input type="text" id="newCrewDriver" list="crewDriverList" class="form-input" placeholder="Select or type Driver name" required>
+            <datalist id="crewDriverList"></datalist>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Assigned truck operator</small>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="newCrewCenterManager" class="form-label">♻️ Recycling Center Manager / MRF Liaison <span class="req">*</span></label>
+            <input type="text" id="newCrewCenterManager" list="crewCenterManagerList" class="form-input" placeholder="Select or type Manager & facility" required>
+            <datalist id="crewCenterManagerList"></datalist>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Receiving facility manager for drop-off</small>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newCrewMembers" class="form-label">Crew Technicians</label>
+            <input type="text" id="newCrewMembers" class="form-input" placeholder="e.g. 2 Technicians" value="2 Technicians">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="newCrewTruckId" class="form-label">Vehicle ID & Type <span class="req">*</span></label>
+            <input type="text" id="newCrewTruckId" class="form-input" placeholder="e.g. TRK-502 (Electric Compactor)" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newCrewCapacity" class="form-label">Capacity (kg) <span class="req">*</span></label>
+            <input type="number" id="newCrewCapacity" class="form-input" min="500" max="25000" placeholder="e.g. 6000" value="6000" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newCrewStatus" class="form-label">Initial Status</label>
+          <select id="newCrewStatus" class="form-input">
+            <option value="Active En Route">Active En Route</option>
+            <option value="Available at Yard">Available at Yard</option>
+            <option value="Scheduled Break">Scheduled Break</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Register Crew</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 10: Record Recyclable Batch (Function 3) -->
+  <div class="modal-backdrop" id="recordBatchModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon emerald-bg">📦</div>
+          <div>
+            <h3 class="modal-title">Record Incoming Recyclable Batch</h3>
+            <p class="modal-subtitle">Log segregated material delivered to municipal yard</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="recordBatchForm" class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="newBatchStream" class="form-label">Waste Category <span class="req">*</span></label>
+            <select id="newBatchStream" class="form-input" required>
+              <option value="Plastic Recyclable">Plastic Recyclables (HDPE, PET, PP)</option>
+              <option value="Paper & Cardboard">Paper & Cardboard</option>
+              <option value="Organic Waste">Organic / Compostable Biomass</option>
+              <option value="Glass & Metal">Glass Bottles & Metal Cans</option>
+              <option value="E-Waste">E-Waste & Electronics</option>
+              <option value="Bulky Furniture">Bulky Household & Scrap</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newBatchWeight" class="form-label">Gross Weight (kg) <span class="req">*</span></label>
+            <input type="number" id="newBatchWeight" class="form-input" min="10" max="50000" placeholder="e.g. 1850" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newBatchZone" class="form-label">Source Zone <span class="req">*</span></label>
+            <select id="newBatchZone" class="form-input" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+              <option value="All Zones">All Zones</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newBatchCarrier" class="form-label">Transport Vehicle</label>
+            <input type="text" id="newBatchCarrier" class="form-input" placeholder="e.g. Freight Carrier TR-904" value="Freight Carrier TR-904">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Log Batch into Yard</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 11: Register Recycling Facility / MRF (Function 3) -->
+  <div class="modal-backdrop" id="registerFacilityModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon green-bg">🏭</div>
+          <div>
+            <h3 class="modal-title">Register Partner Recycling Facility</h3>
+            <p class="modal-subtitle">Add certified processing plant, composting hub, or smelter</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="registerFacilityForm" class="modal-body">
+        <div class="form-group">
+          <label for="newFacName" class="form-label">Facility / Company Name <span class="req">*</span></label>
+          <input type="text" id="newFacName" class="form-input" placeholder="e.g. EcoCycle Advanced Polymer MRF" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="newFacType" class="form-label">Facility Classification / Type <span class="req">*</span></label>
+            <input type="text" id="newFacType" class="form-input" placeholder="e.g. Plastics Recovery & Pelletizing" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newFacCapacity" class="form-label">Monthly Capacity (Tons) <span class="req">*</span></label>
+            <input type="number" id="newFacCapacity" class="form-input" min="1" max="5000" placeholder="e.g. 150" value="150" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newFacLocation" class="form-label">Street Address & Location <span class="req">*</span></label>
+          <input type="text" id="newFacLocation" class="form-input" placeholder="e.g. Plot 42, Eco-Industrial Park, North Sector" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="newFacMaterials" class="form-label">Accepted Material Streams <span class="req">*</span></label>
+            <input type="text" id="newFacMaterials" class="form-input" placeholder="e.g. PET (1), HDPE (2), PP (5)" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newFacPhone" class="form-label">Contact Phone</label>
+            <input type="tel" id="newFacPhone" class="form-input" placeholder="+1 (555) 000-0000" value="+1 (555) 880-9912">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Register Facility</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 12: Add Segregation Knowledge Item (Function 3) -->
+  <div class="modal-backdrop" id="addSegregationItemModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon purple-bg">💡</div>
+          <div>
+            <h3 class="modal-title">Add Item to Segregation Guide</h3>
+            <p class="modal-subtitle">Define sorting instructions and bin assignment</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="addSegregationItemForm" class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="newSegName" class="form-label">Item / Product Name <span class="req">*</span></label>
+            <input type="text" id="newSegName" class="form-input" placeholder="e.g. Aluminum Foil Wrap, Yogurt Cup" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newSegIcon" class="form-label">Emoji Icon</label>
+            <input type="text" id="newSegIcon" class="form-input" placeholder="e.g. 🥫, 📦, 🧴" value="♻️">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newSegBin" class="form-label">Designated Bin <span class="req">*</span></label>
+            <select id="newSegBin" class="form-input" required>
+              <option value="organic">🟢 Green Bin (Organic / Compost)</option>
+              <option value="paper">🔵 Blue Bin (Paper & Fiber)</option>
+              <option value="plastic">🟡 Yellow Bin (Rigid Plastics)</option>
+              <option value="glass-metal">⚪ Silver Bin (Metal & Glass)</option>
+              <option value="hazard">🔴 Red Bin (Hazardous / E-Waste)</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="newSegRating" class="form-label">Recyclability Rating</label>
+            <input type="text" id="newSegRating" class="form-input" placeholder="e.g. 100% Recyclable" value="100% Recyclable">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newSegPrep" class="form-label">Preparation & Disposal Rule <span class="req">*</span></label>
+          <textarea id="newSegPrep" class="form-textarea" rows="2" placeholder="e.g. Rinse thoroughly, clean off food oils, flatten..." required></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to Guide</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 14: Register Operations Personnel (Function 2) -->
+  <div class="modal-backdrop" id="registerPersonnelModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon blue-bg">👥</div>
+          <div>
+            <h3 class="modal-title">Register Operations Personnel</h3>
+            <p class="modal-subtitle">Add a Crew Leader, Heavy Vehicle Driver, or Recycling Center Manager</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="registerPersonnelForm" class="modal-body">
+        <div class="form-group">
+          <label for="personnelRole" class="form-label">Personnel Role <span class="req">*</span></label>
+          <select id="personnelRole" class="form-input" required>
+            <option value="Crew Leader">🎖️ Crew Leader (Field Operations & Route Supervisor)</option>
+            <option value="Driver">🚛 Driver (Heavy Compactor / Fleet Operator)</option>
+            <option value="Recycling Center Manager">♻️ Recycling Center Manager (MRF Facility Liaison)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="personnelName" class="form-label">Full Name <span class="req">*</span></label>
+            <input type="text" id="personnelName" class="form-input" placeholder="e.g. Kasun Wickramasinghe" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="personnelZone" class="form-label">Assigned Zone <span class="req">*</span></label>
+            <select id="personnelZone" class="form-input" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+              <option value="All Municipal Zones">All Municipal Zones</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="personnelPhone" class="form-label">Contact Phone <span class="req">*</span></label>
+            <input type="tel" id="personnelPhone" class="form-input" placeholder="e.g. +94 77 123 4567" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="personnelEmail" class="form-label">Email Address</label>
+            <input type="email" id="personnelEmail" class="form-input" placeholder="e.g. staff@citypulse.org">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="personnelAssignment" class="form-label" id="personnelAssignmentLabel">Assigned Team / Unit / Scope</label>
+          <input type="text" id="personnelAssignment" class="form-input" placeholder="e.g. Lead for Crew #1 (Alpha Hauler)">
+          <small class="form-hint" id="personnelAssignmentHint">Designate crew supervision scope or field team.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="personnelStatus" class="form-label">Duty Status</label>
+          <select id="personnelStatus" class="form-input">
+            <option value="Active / On Duty">Active / On Duty</option>
+            <option value="Standby / Available">Standby / Available</option>
+            <option value="Off Duty / Leave">Off Duty / Leave</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Register Personnel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 13: Edit User Profile (Function 1) -->
+  <div class="modal-backdrop" id="editProfileModal" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon emerald-bg">✏️</div>
+          <div>
+            <h3 class="modal-title">Edit Resident Profile</h3>
+            <p class="modal-subtitle">Update citizen or business account details and zone</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal>&times;</button>
+      </div>
+      <form id="editProfileForm" class="modal-body">
+        <div class="form-group">
+          <label for="editProfName" class="form-label">Account Holder Name / Entity <span class="req">*</span></label>
+          <input type="text" id="editProfName" class="form-input" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="editProfEmail" class="form-label">Email Address <span class="req">*</span></label>
+            <input type="email" id="editProfEmail" class="form-input" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="editProfPhone" class="form-label">Phone Number <span class="req">*</span></label>
+            <input type="tel" id="editProfPhone" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="editProfAddress" class="form-label">Street Address <span class="req">*</span></label>
+            <input type="text" id="editProfAddress" class="form-input" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="editProfZone" class="form-label">Zone <span class="req">*</span></label>
+            <select id="editProfZone" class="form-input" required>
+              <option value="Colombo Fort">Colombo Fort</option>
+              <option value="Kollupitiya">Kollupitiya</option>
+              <option value="Borella">Borella</option>
+              <option value="Wellawatte">Wellawatte</option>
+              <option value="Dehiwala">Dehiwala</option>
+              <option value="Kotte">Kotte</option>
+              <option value="Nugegoda">Nugegoda</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="editProfAccountType" class="form-label">Account Type</label>
+          <select id="editProfAccountType" class="form-input">
+            <option value="Residential Account">Residential Account</option>
+            <option value="Commercial Business">Commercial Business</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Main Application Script -->
+  <script src="supabase-sync.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
