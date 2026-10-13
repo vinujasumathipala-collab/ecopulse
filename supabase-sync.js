@@ -89,15 +89,19 @@ class SupabaseSyncService {
   // Data Mappers (Database Columns <--> Client Store Objects)
   // ---------------------------------------------------------------------------
   mapUserToDb(u) {
+    let dbRole = u.role || 'Resident';
+    if (dbRole === 'User' || dbRole === 'Citizen' || dbRole === 'Citizen User') {
+      dbRole = 'Resident';
+    }
     return {
       id: u.id,
       name: u.name,
       email: u.email,
       phone: u.phone,
-      role: u.role || 'Resident',
+      role: dbRole,
       account_type: u.accountType || 'Residential Account',
       address: u.address || 'Curbside',
-      zone: u.zone,
+      zone: u.zone || 'Colombo Fort',
       eco_points: u.ecoPoints || 0,
       total_recycled_kg: u.totalRecycledKg || 0,
       pickups_completed: u.pickupsCompleted || 0,
@@ -140,7 +144,9 @@ class SupabaseSyncService {
       notes: r.notes || null,
       image_url: r.image || null,
       points_awarded: Number(r.pointsAwarded || 0),
-      missed_reason: r.missedReason || null
+      missed_reason: r.missedReason || null,
+      facility_id: r.facilityId || null,
+      facility_name: r.facilityName || null
     };
   }
 
@@ -161,7 +167,9 @@ class SupabaseSyncService {
       notes: r.notes,
       image: r.image_url,
       pointsAwarded: Number(r.points_awarded || 0),
-      missedReason: r.missed_reason
+      missedReason: r.missed_reason,
+      facilityId: r.facility_id || null,
+      facilityName: r.facility_name || null
     };
   }
 
@@ -322,7 +330,8 @@ class SupabaseSyncService {
       carrier_vehicle: b.carrierVehicle || null,
       yield_kg: b.yieldKg !== null ? Number(b.yieldKg) : null,
       recovery_rate: b.recoveryRate || null,
-      co2_saved_kg: Number(b.co2SavedKg || 0)
+      co2_saved_kg: Number(b.co2SavedKg || 0),
+      request_id: b.requestId || null
     };
   }
 
@@ -339,7 +348,8 @@ class SupabaseSyncService {
       carrierVehicle: r.carrier_vehicle,
       yieldKg: r.yield_kg !== null ? Number(r.yield_kg) : null,
       recoveryRate: r.recovery_rate,
-      co2SavedKg: Number(r.co2_saved_kg)
+      co2SavedKg: Number(r.co2_saved_kg),
+      requestId: r.request_id || null
     };
   }
 

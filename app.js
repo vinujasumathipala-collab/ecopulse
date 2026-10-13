@@ -707,6 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuthSystem();
   initUpdateCrewForm();
   initUpdateRequestForm();
+  initPhoneInputFormatting();
 
   applyRolePermissions(store.data.currentUser || store.data.userProfile || DEFAULT_SYSTEM_ACCOUNTS[0]);
   renderAllViews();
@@ -953,6 +954,14 @@ function setupSubtabs(attrName, paneClass) {
       if (targetElem) {
         targetElem.classList.add('active');
       }
+
+      if (attrName === 'data-f2sub') {
+        if (targetSubId === 'daily-jobs') renderDailyJobs();
+        if (targetSubId === 'dispatch-board') renderDispatchBoard();
+        if (targetSubId === 'crew-roster') renderCrewRoster();
+        if (targetSubId === 'personnel-roster') renderPersonnelRoster();
+        if (targetSubId === 'schedules-planner') renderMasterSchedules();
+      }
     });
   });
 }
@@ -1120,24 +1129,58 @@ function validateSriLankanPhoneNumber(phone) {
   if (!phone || typeof phone !== 'string') {
     return { valid: false, message: 'Contact phone number is required.' };
   }
-  const clean = phone.trim().replace(/[\s\-\(\)\.]/g, '');
-  const validRegex = /^(\+94[1-9]\d{8}|0[1-9]\d{8}|[1-9]\d{8})$/;
+  let clean = phone.trim().replace(/[\s\-\(\)\.]/g, '');
+  if (clean.startsWith('+94')) {
+    clean = clean.slice(3);
+  } else if (clean.startsWith('94') && clean.length >= 11) {
+    clean = clean.slice(2);
+  } else if (clean.startsWith('0')) {
+    clean = clean.slice(1);
+  }
+  const validRegex = /^[1-9]\d{8}$/;
   if (!validRegex.test(clean)) {
     return {
       valid: false,
-      message: 'Invalid phone number! Please enter a valid 9 or 10-digit Sri Lankan phone number (e.g. +94 77 123 4567 or 0771234567).'
+      message: 'Invalid phone number! Please enter a valid 9-digit Sri Lankan phone number (e.g. 77 123 4567 or 11 254 9988).'
     };
   }
-  let digits = clean;
-  if (digits.startsWith('+94')) {
-    digits = digits.slice(3);
-  } else if (digits.startsWith('0')) {
-    digits = digits.slice(1);
-  }
-  const formatted = `+94 ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
-  return { valid: true, formatted };
+  const formatted = `+94 ${clean.slice(0, 2)} ${clean.slice(2, 5)} ${clean.slice(5)}`;
+  return { valid: true, formatted, localDigits: clean };
 }
 window.validateSriLankanPhoneNumber = validateSriLankanPhoneNumber;
+
+function extractLocalPhoneDigits(phone) {
+  if (!phone || typeof phone !== 'string') return '';
+  let clean = phone.trim().replace(/[\s\-\(\)\.]/g, '');
+  if (clean.startsWith('+94')) clean = clean.slice(3);
+  else if (clean.startsWith('94') && clean.length >= 11) clean = clean.slice(2);
+  else if (clean.startsWith('0')) clean = clean.slice(1);
+  if (clean.length === 9) {
+    return `${clean.slice(0, 2)} ${clean.slice(2, 5)} ${clean.slice(5)}`;
+  }
+  return clean;
+}
+window.extractLocalPhoneDigits = extractLocalPhoneDigits;
+
+function initPhoneInputFormatting() {
+  const phoneInputs = document.querySelectorAll('.phone-input');
+  phoneInputs.forEach(input => {
+    input.addEventListener('input', (e) => {
+      let val = e.target.value.replace(/[\s\-\(\)\.]/g, '');
+      if (val.startsWith('+94')) val = val.slice(3);
+      else if (val.startsWith('94') && val.length > 9) val = val.slice(2);
+      else if (val.startsWith('0')) val = val.slice(1);
+      val = val.replace(/\D/g, '').slice(0, 9);
+      if (val.length > 5) {
+        e.target.value = `${val.slice(0, 2)} ${val.slice(2, 5)} ${val.slice(5)}`;
+      } else if (val.length > 2) {
+        e.target.value = `${val.slice(0, 2)} ${val.slice(2)}`;
+      } else {
+        e.target.value = val;
+      }
+    });
+  });
+}
 
 // -----------------------------------------------------------------------------
 // Authentication System (Login & Registration Portal)
@@ -1212,7 +1255,7 @@ function initAuthSystem() {
       const password = document.getElementById('regPassword').value;
       // Public self-registration creates ONLY Citizen User accounts.
       // Staff accounts (Crew Leader, Manager, Admin) are provisioned through the administrative backend.
-      const role = 'User';
+      const role = 'Resident';
       const zone = document.getElementById('regZone').value;
       const address = document.getElementById('regAddress').value.trim();
       const phoneRaw = document.getElementById('regPhone').value.trim();
@@ -1429,17 +1472,29 @@ window.openUpdateRequestModal = function(reqId) {
 
   const crewSelect = document.getElementById('editReqAssignedCrew');
   if (crewSelect) {
-    crewSelect.innerHTML = (store.data.crews || []).map(c => `
+    const isUnassigned = !req.assignedCrew || req.assignedCrew === 'Unassigned';
+    const unassignedOption = `<option value="Unassigned" ${isUnassigned ? 'selected' : ''}>⚠️ Unassigned (Pending Dispatch)</option>`;
+    const crewOptions = (store.data.crews || []).map(c => `
       <option value="${c.name}" ${c.name === req.assignedCrew ? 'selected' : ''}>${c.name} (${c.zone})</option>
-    `).join('') || `<option value="${req.assignedCrew || ''}">${req.assignedCrew || 'Unassigned'}</option>`;
+    `).join('');
+    crewSelect.innerHTML = unassignedOption + crewOptions;
   }
 
   const facSelect = document.getElementById('editReqFacility');
   if (facSelect) {
     const facilities = store.data.recyclingFacilities || [];
+    const zoneFacility = facilities.find(f => f.zone && f.zone.toLowerCase() === (req.zone || '').toLowerCase()) ||
+                         facilities[0];
     facSelect.innerHTML = facilities.map(f => `
-      <option value="${f.id}" ${f.id === req.facilityId ? 'selected' : ''}>${f.name} — ${f.type} (Cap: ${f.capacityTons}t)</option>
+      <option value="${f.id}" ${(req.facilityId ? f.id === req.facilityId : (zoneFacility && f.id === zoneFacility.id)) ? 'selected' : ''}>
+        ${f.name} [Zone: ${f.zone || 'All Zones'}] — ${f.type} (Load: ${f.currentLoadTons}/${f.capacityTons}t)
+      </option>
     `).join('') || '<option value="">No registered facilities</option>';
+    if (req.facilityId) {
+      facSelect.value = req.facilityId;
+    } else if (zoneFacility) {
+      facSelect.value = zoneFacility.id;
+    }
   }
 
   document.getElementById('editReqQualityGrade').value = req.qualityGrade || 'Grade A - Pure Segregation';
@@ -1461,68 +1516,69 @@ function initUpdateRequestForm() {
     const newStatus = document.getElementById('editReqStatus').value;
     const actualWeightVal = document.getElementById('editReqActualWeight').value;
     const actualWeight = actualWeightVal !== '' ? parseFloat(actualWeightVal) : null;
+    const oldCrew = req.assignedCrew;
     const assignedCrew = document.getElementById('editReqAssignedCrew').value;
     const qualityGrade = document.getElementById('editReqQualityGrade').value;
     const crewNotes = document.getElementById('editReqCrewNotes').value;
     const targetFacId = document.getElementById('editReqFacility')?.value;
-    const targetFac = store.data.recyclingFacilities.find(f => f.id === targetFacId);
 
-    req.status = newStatus;
-    req.actualKg = actualWeight;
-    req.assignedCrew = assignedCrew;
+    req.assignedCrew = assignedCrew === 'Unassigned' ? 'Unassigned' : assignedCrew;
     req.qualityGrade = qualityGrade;
     req.notes = crewNotes;
-    if (targetFac) {
-      req.facilityId = targetFac.id;
-      req.facilityName = targetFac.name;
+
+    // Maintain crew assigned stops count
+    if (req.assignedCrew !== 'Unassigned' && req.assignedCrew !== oldCrew) {
+      const newCrewObj = store.data.crews.find(c => c.name === req.assignedCrew);
+      if (newCrewObj) newCrewObj.stopsAssigned = (newCrewObj.stopsAssigned || 0) + 1;
+      if (oldCrew && oldCrew !== 'Unassigned') {
+        const oldCrewObj = store.data.crews.find(c => c.name === oldCrew);
+        if (oldCrewObj && oldCrewObj.stopsAssigned > 0) oldCrewObj.stopsAssigned -= 1;
+      }
+    } else if (req.assignedCrew === 'Unassigned' && oldCrew && oldCrew !== 'Unassigned') {
+      const oldCrewObj = store.data.crews.find(c => c.name === oldCrew);
+      if (oldCrewObj && oldCrewObj.stopsAssigned > 0) oldCrewObj.stopsAssigned -= 1;
     }
 
-    if (newStatus === 'Collected' && actualWeight && actualWeight > 0) {
-      req.pointsAwarded = Math.round(actualWeight * 10);
-      if (targetFac) {
-        targetFac.currentLoadTons = Number(((targetFac.currentLoadTons || 0) + (actualWeight / 1000)).toFixed(1));
+    if (newStatus === 'Collected') {
+      // Automatically route completed pickup to relevant storage center and log as batch
+      const result = completePickupAndRouteToStorageCenter(reqId, actualWeight, targetFacId);
+      const facName = result?.facility?.name || 'Storage Center';
+      const batId = result?.batch?.id || 'BAT-Auto';
+      closeModal('updateRequestModal');
+      renderAllViews();
+      showToast(`Request ${req.id} completed ➔ Delivered to ${facName} & recorded as batch ${batId}!`, 'success');
+      return;
+    } else {
+      req.status = newStatus;
+      if (actualWeight !== null) req.actualKg = actualWeight;
+      if (targetFacId) {
+        const targetFac = store.data.recyclingFacilities.find(f => f.id === targetFacId);
+        if (targetFac) {
+          req.facilityId = targetFac.id;
+          req.facilityName = targetFac.name;
+        }
       }
-      if (store.data.userProfile && store.data.userProfile.id === req.residentId) {
-        store.data.userProfile.ecoPoints = (store.data.userProfile.ecoPoints || 0) + req.pointsAwarded;
-        store.data.userProfile.totalRecycledKg = Number(((store.data.userProfile.totalRecycledKg || 0) + actualWeight).toFixed(1));
-        store.data.userProfile.pickupsCompleted = (store.data.userProfile.pickupsCompleted || 0) + 1;
+      // If request was unassigned and has now been given a crew, advance status to Assigned if still Submitted
+      if (req.assignedCrew !== 'Unassigned' && req.status === 'Submitted') {
+        req.status = 'Assigned';
       }
-      // Ensure recyclable batch exists in yard for target facility
-      const existingBatch = store.data.recyclableBatches.find(b => b.requestId === req.id);
-      if (!existingBatch) {
-        store.data.recyclableBatches.unshift({
-          id: 'BAT-' + (1000 + store.data.recyclableBatches.length + 1),
-          stream: req.category,
-          weightKg: actualWeight,
-          sourceZone: req.zone,
-          facilityId: targetFac ? targetFac.id : null,
-          facilityName: targetFac ? targetFac.name : 'Central Municipal Yard',
-          status: 'Allocated',
-          date: new Date().toISOString().split('T')[0],
-          carrierVehicle: assignedCrew || 'Collection Truck',
-          yieldKg: null,
-          recoveryRate: null,
-          co2SavedKg: Math.round(actualWeight * 1.5),
-          requestId: req.id
-        });
-      }
-    }
 
-    store.data.activityFeed.unshift({
-      text: `Request ${req.id} updated to "${newStatus}"${actualWeight ? ' (' + actualWeight + 'kg)' : ''}${targetFac ? ' -> ' + targetFac.name : ''}.`,
-      time: 'Just now',
-      dot: newStatus === 'Collected' ? 'emerald' : 'blue'
-    });
+      store.data.activityFeed.unshift({
+        text: `Request ${req.id} updated to "${newStatus}"${req.assignedCrew !== 'Unassigned' ? ' (' + req.assignedCrew + ')' : ''}.`,
+        time: 'Just now',
+        dot: 'blue'
+      });
 
-    store.saveState();
-    if (window.supabaseSync) {
-      window.supabaseSync.pushRequest(req);
-      if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
+      store.saveState();
+      if (window.supabaseSync) {
+        window.supabaseSync.updateRequest(req);
+        if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
+      }
     }
 
     closeModal('updateRequestModal');
     renderAllViews();
-    showToast(`Request ${req.id} updated to "${newStatus}"!`, 'success');
+    showToast(`Request ${req.id} updated successfully!`, 'success');
   });
 }
 
@@ -1832,7 +1888,7 @@ function openEditProfileModal() {
   const user = store.data.userProfile;
   document.getElementById('editProfName').value = user.name;
   document.getElementById('editProfEmail').value = user.email;
-  document.getElementById('editProfPhone').value = formatToSriLankanPhone(user.phone);
+  document.getElementById('editProfPhone').value = extractLocalPhoneDigits(user.phone);
   document.getElementById('editProfAddress').value = user.address;
   document.getElementById('editProfZone').value = user.zone;
   document.getElementById('editProfAccountType').value = user.accountType || 'Residential Account';
@@ -1848,7 +1904,13 @@ function initProfileEditForm() {
     store.data.userProfile.name = document.getElementById('editProfName').value;
     store.data.userProfile.email = document.getElementById('editProfEmail').value;
     const phoneInputVal = document.getElementById('editProfPhone').value.trim();
-    store.data.userProfile.phone = formatToSriLankanPhone(phoneInputVal);
+    const phoneValidation = validateSriLankanPhoneNumber(phoneInputVal);
+    if (!phoneValidation.valid) {
+      showToast(phoneValidation.message, 'error');
+      document.getElementById('editProfPhone').focus();
+      return;
+    }
+    store.data.userProfile.phone = phoneValidation.formatted;
     store.data.userProfile.address = document.getElementById('editProfAddress').value;
     store.data.userProfile.zone = document.getElementById('editProfZone').value;
     store.data.userProfile.accountType = document.getElementById('editProfAccountType').value;
@@ -1970,37 +2032,10 @@ function initPickupRequestForm() {
     if (!store.data.requests) store.data.requests = [];
     const newReqId = 'REQ-' + (1000 + store.data.requests.length + 1);
 
-    // 1. FLEET ASSIGNMENT:
-    // Match with available crew in zone if one exists, fallback to first crew or auto-provision municipal crew
-    let assignedCrew = store.data.crews.find(c => c.zone === zone);
-    if (!assignedCrew && store.data.crews.length > 0) {
-      assignedCrew = store.data.crews[0];
-    }
-    if (!assignedCrew) {
-      const newCrewId = 'CRW-' + (100 + store.data.crews.length + 1);
-      const newCrewName = `Crew #1 (${zone} Fleet)`;
-      assignedCrew = {
-        id: newCrewId,
-        name: newCrewName,
-        zone: zone,
-        truckId: `TRK-${zone.substring(0, 3).toUpperCase().replace(/\s+/g, '')}-101`,
-        truckCapacityKg: 3500,
-        driver: 'Municipal Driver',
-        leader: 'Fleet Route Supervisor',
-        centerManager: 'MRF Material Manager',
-        members: 3,
-        status: 'Active',
-        stopsAssigned: 1,
-        stopsCompleted: 0,
-        onTimeRate: '100%'
-      };
-      store.data.crews.push(assignedCrew);
-    } else {
-      assignedCrew.stopsAssigned = (assignedCrew.stopsAssigned || 0) + 1;
-    }
-
-    const assignedCrewName = assignedCrew.name;
-    const initialStatus = 'Assigned';
+    // Manual Crew Assignment:
+    // Requests start as 'Submitted' and 'Unassigned'. Dispatchers or managers manually assign available crews.
+    const initialStatus = 'Submitted';
+    const assignedCrewName = 'Unassigned';
 
     const activeUser = store.data.currentUser || store.data.userProfile || DEFAULT_SYSTEM_ACCOUNTS[0];
     const residentId = activeUser.id || 'USR-101';
@@ -2026,43 +2061,8 @@ function initPickupRequestForm() {
 
     store.data.requests.unshift(newRequest);
 
-    // 2. SCHEDULES INTEGRATION:
-    let dayOfWeek = 'Monday';
-    if (pickupDate) {
-      const parts = pickupDate.split('-');
-      if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        dayOfWeek = dayNames[d.getDay()] || 'Monday';
-      }
-    }
-
-    // Add or update entry in Master & Zone Route Schedules
-    let existingSched = store.data.schedules.find(s => s.zone === zone && s.day === dayOfWeek && s.stream === category);
-    if (existingSched) {
-      existingSched.crewName = assignedCrewName;
-      if (!existingSched.timeSlot) existingSched.timeSlot = timeSlot;
-    } else {
-      const newSchedId = 'SCH-' + (100 + store.data.schedules.length + 1);
-      store.data.schedules.push({
-        id: newSchedId,
-        zone: zone,
-        stream: category,
-        day: dayOfWeek,
-        timeSlot: timeSlot,
-        crewName: assignedCrewName,
-        notes: `Route for stop ${newReqId}`
-      });
-    }
-
-    // Pre-select this crew in the crew manifest dropdown
-    const crewSelector = document.getElementById('activeCrewSelector');
-    if (crewSelector) {
-      crewSelector.value = assignedCrewName;
-    }
-
     store.data.activityFeed.unshift({
-      text: `New pickup request ${newReqId} (${category}, ~${estimatedKg}kg) dispatched to Fleet (${assignedCrewName}) for ${dayOfWeek} schedule.`,
+      text: `New pickup request ${newReqId} (${category}, ~${estimatedKg}kg, ${zone}) submitted. Pending manual crew dispatch.`,
       time: 'Just now',
       dot: 'blue'
     });
@@ -2071,9 +2071,6 @@ function initPickupRequestForm() {
 
     if (window.supabaseSync) {
       window.supabaseSync.pushRequest(newRequest);
-      window.supabaseSync.pushCrew(assignedCrew);
-      const targetSched = existingSched || store.data.schedules[store.data.schedules.length - 1];
-      if (targetSched) window.supabaseSync.pushSchedule(targetSched);
       if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
 
@@ -2085,7 +2082,7 @@ function initPickupRequestForm() {
     closeModal('requestPickupModal');
 
     renderAllViews();
-    showToast(`Pickup request ${newReqId} dispatched to Fleet (${assignedCrewName}) & added to Schedules (${dayOfWeek})!`, 'success');
+    showToast(`Pickup request ${newReqId} submitted! Awaiting manual crew assignment in Dispatch Queue.`, 'success');
   });
 
   const categoryFilter = document.getElementById('requestCategoryFilter');
@@ -2378,6 +2375,124 @@ function populateScheduleCrewDropdown() {
   }
 }
 
+// Centralized Municipal Pickup Completion & Relevant Storage Center Routing
+function completePickupAndRouteToStorageCenter(requestId, actualWeightKg = null, customFacilityId = null) {
+  const req = store.data.requests.find(r => r.id === requestId);
+  if (!req) return null;
+
+  // 1. Determine verified actual weight
+  const actualKg = actualWeightKg !== null && !isNaN(actualWeightKg) && Number(actualWeightKg) > 0
+    ? Number(actualWeightKg)
+    : (req.actualKg || req.estimatedKg || 10);
+
+  // 2. Identify relevant segregation/storage center dedicated to this pickup's zone
+  const facilities = store.data.recyclingFacilities || [];
+  let facility = null;
+  if (customFacilityId) {
+    facility = facilities.find(f => f.id === customFacilityId);
+  }
+  if (!facility && req.zone) {
+    const reqZoneClean = req.zone.trim().toLowerCase();
+    facility = facilities.find(f => f.zone && f.zone.trim().toLowerCase() === reqZoneClean) ||
+               facilities.find(f => f.zone && (reqZoneClean.includes(f.zone.trim().toLowerCase()) || f.zone.trim().toLowerCase().includes(reqZoneClean))) ||
+               facilities.find(f => (f.location || '').toLowerCase().includes(reqZoneClean));
+  }
+  if (!facility && facilities.length > 0) {
+    facility = facilities[0];
+  }
+
+  const facilityId = facility ? facility.id : null;
+  const facilityName = facility ? facility.name : 'Central Municipal Yard';
+
+  // 3. Update pickup request status and points
+  req.status = 'Collected';
+  req.actualKg = actualKg;
+  req.facilityId = facilityId;
+  req.facilityName = facilityName;
+  req.pointsAwarded = Math.round(actualKg * 10);
+
+  // 4. Automatically update the relevant storage center's current load tonnage
+  if (facility) {
+    const tonsAdded = Number((actualKg / 1000).toFixed(2));
+    facility.currentLoadTons = Number(((facility.currentLoadTons || 0) + tonsAdded).toFixed(2));
+  }
+
+  // 5. Award eco points to resident profile if current resident
+  const activeUser = store.data.currentUser || store.data.userProfile;
+  if (activeUser && req.residentId === activeUser.id) {
+    store.data.userProfile.ecoPoints = (store.data.userProfile.ecoPoints || 0) + req.pointsAwarded;
+    store.data.userProfile.totalRecycledKg = Number(((store.data.userProfile.totalRecycledKg || 0) + actualKg).toFixed(1));
+    store.data.userProfile.pickupsCompleted = (store.data.userProfile.pickupsCompleted || 0) + 1;
+  }
+
+  // 6. Automatically record as a batch in the relevant storage center
+  if (!store.data.recyclableBatches) store.data.recyclableBatches = [];
+  let batch = store.data.recyclableBatches.find(b => b.requestId === req.id);
+  const todayStr = new Date().toISOString().split('T')[0];
+  let isNewBatch = false;
+
+  if (!batch) {
+    isNewBatch = true;
+    const newBatchId = 'BAT-' + (1000 + store.data.recyclableBatches.length + 1);
+    batch = {
+      id: newBatchId,
+      stream: req.category,
+      weightKg: actualKg,
+      sourceZone: req.zone || 'Colombo Fort',
+      facilityId: facilityId,
+      facilityName: facilityName,
+      status: 'Allocated',
+      date: todayStr,
+      carrierVehicle: req.assignedCrew && req.assignedCrew !== 'Unassigned' ? req.assignedCrew : `Fleet Unit (${req.zone || 'Central'})`,
+      yieldKg: null,
+      recoveryRate: null,
+      co2SavedKg: Math.round(actualKg * 1.5),
+      requestId: req.id
+    };
+    store.data.recyclableBatches.unshift(batch);
+  } else {
+    batch.weightKg = actualKg;
+    batch.stream = req.category;
+    batch.sourceZone = req.zone || batch.sourceZone;
+    batch.facilityId = facilityId;
+    batch.facilityName = facilityName;
+    batch.status = 'Allocated';
+    batch.carrierVehicle = req.assignedCrew && req.assignedCrew !== 'Unassigned' ? req.assignedCrew : batch.carrierVehicle;
+    batch.co2SavedKg = Math.round(actualKg * 1.5);
+  }
+
+  // 7. Audit log in activity feed
+  store.data.activityFeed.unshift({
+    text: `Pickup ${req.id} completed (${actualKg}kg ${req.category}) ➔ Delivered to ${facilityName} (${req.zone}) as batch ${batch.id}.`,
+    time: 'Just now',
+    dot: 'emerald'
+  });
+
+  // 8. Persist state and sync to Supabase Cloud
+  store.saveState();
+
+  if (window.supabaseSync) {
+    window.supabaseSync.updateRequest(req);
+    if (facility && typeof window.supabaseSync.updateFacility === 'function') {
+      window.supabaseSync.updateFacility(facility);
+    }
+    if (isNewBatch) {
+      if (typeof window.supabaseSync.pushBatch === 'function') {
+        window.supabaseSync.pushBatch(batch);
+      }
+    } else {
+      if (typeof window.supabaseSync.updateBatch === 'function') {
+        window.supabaseSync.updateBatch(batch);
+      }
+    }
+    if (store.data.activityFeed.length > 0) {
+      window.supabaseSync.pushActivity(store.data.activityFeed[0]);
+    }
+  }
+
+  return { request: req, facility, batch };
+}
+
 // 4. Record Collection / Weigh Outcome Form (Function 2)
 function initCollectionForm() {
   const form = document.getElementById('recordCollectionForm');
@@ -2395,64 +2510,18 @@ function initCollectionForm() {
       return;
     }
 
-    let facility = null;
     if (outcome === 'Completed') {
-      const actualKg = parseFloat(document.getElementById('colActualWeight').value) || request.estimatedKg;
-      const quality = document.getElementById('colSegregationQuality').value;
+      const actualKgVal = document.getElementById('colActualWeight').value;
+      const actualKg = actualKgVal ? parseFloat(actualKgVal) : (request.actualKg || request.estimatedKg || 10);
+      const quality = document.getElementById('colSegregationQuality')?.value;
+      if (quality) request.qualityGrade = quality;
       const targetCenterId = document.getElementById('colRecycleCenter')?.value;
 
-      facility = store.data.recyclingFacilities.find(f => f.id === targetCenterId);
-      if (!facility) {
-        facility = store.data.recyclingFacilities.find(f => f.zone && f.zone.toLowerCase() === (request.zone || '').toLowerCase()) ||
-                   store.data.recyclingFacilities[0];
-      }
-      const facilityId = facility ? facility.id : null;
-      const facilityName = facility ? facility.name : 'Central Municipal Yard';
+      const result = completePickupAndRouteToStorageCenter(jobId, actualKg, targetCenterId);
+      const facilityName = result?.facility?.name || 'Recycling & Storage Center';
+      const batchId = result?.batch?.id || 'BAT-Auto';
 
-      request.status = 'Collected';
-      request.actualKg = actualKg;
-      request.facilityId = facilityId;
-      request.facilityName = facilityName;
-      request.pointsAwarded = Math.round(actualKg * 10);
-
-      // Automatically update the relevant center's current load
-      if (facility) {
-        facility.currentLoadTons = Number(((facility.currentLoadTons || 0) + (actualKg / 1000)).toFixed(2));
-      }
-
-      // Award points to user profile
-      const activeUser = store.data.currentUser || store.data.userProfile;
-      if (activeUser && request.residentId === activeUser.id) {
-        store.data.userProfile.ecoPoints = (store.data.userProfile.ecoPoints || 0) + request.pointsAwarded;
-        store.data.userProfile.totalRecycledKg = Number(((store.data.userProfile.totalRecycledKg || 0) + actualKg).toFixed(1));
-        store.data.userProfile.pickupsCompleted = (store.data.userProfile.pickupsCompleted || 0) + 1;
-      }
-
-      // Auto-add incoming batch into Yard routed to relevant zone segregation center
-      const newBatchId = 'BAT-' + (1000 + store.data.recyclableBatches.length + 1);
-      store.data.recyclableBatches.unshift({
-        id: newBatchId,
-        stream: request.category,
-        weightKg: actualKg,
-        sourceZone: request.zone,
-        facilityId: facilityId,
-        facilityName: facilityName,
-        status: 'Allocated',
-        date: new Date().toISOString().split('T')[0],
-        carrierVehicle: request.assignedCrew || `Fleet Unit (${request.zone})`,
-        yieldKg: null,
-        recoveryRate: null,
-        co2SavedKg: Math.round(actualKg * 1.5),
-        requestId: request.id
-      });
-
-      store.data.activityFeed.unshift({
-        text: `Stop ${jobId} weighed (${actualKg}kg ${request.category}) -> Auto-delivered to ${facilityName} (${request.zone}).`,
-        time: 'Just now',
-        dot: 'emerald'
-      });
-
-      showToast(`Stop ${jobId} weighed: ${actualKg}kg delivered to ${facilityName} (${request.zone})!`, 'success');
+      showToast(`Stop ${jobId} weighed: ${actualKg}kg delivered to ${facilityName} & logged as batch ${batchId}!`, 'success');
     } else {
       const reason = document.getElementById('colMissedReason').value;
       request.status = 'Missed';
@@ -2464,20 +2533,15 @@ function initCollectionForm() {
         dot: 'red'
       });
 
+      store.saveState();
+      if (window.supabaseSync) {
+        window.supabaseSync.updateRequest(request);
+        if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
+      }
+
       showToast(`Stop ${jobId} marked missed: ${reason}.`, 'warning');
     }
 
-    store.saveState();
-    if (window.supabaseSync) {
-      window.supabaseSync.updateRequest(request);
-      if (facility && typeof window.supabaseSync.updateFacility === 'function') {
-        window.supabaseSync.updateFacility(facility);
-      }
-      if (outcome === 'Completed' && store.data.recyclableBatches.length > 0) {
-        window.supabaseSync.pushBatch(store.data.recyclableBatches[0]);
-      }
-      if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
-    }
     closeModal('recordCollectionModal');
     renderAllViews();
   });
@@ -2645,9 +2709,13 @@ function initFacilityRegistrationForm() {
     const location = document.getElementById('newFacLocation').value.trim();
     const materials = document.getElementById('newFacMaterials').value.split(',').map(m => m.trim());
     let phoneRaw = document.getElementById('newFacPhone').value.trim();
-
-    let phone = formatToSriLankanPhone(phoneRaw);
-    if (!phone) phone = '+94 11 254 9988';
+    const phoneValidation = validateSriLankanPhoneNumber(phoneRaw);
+    if (!phoneValidation.valid) {
+      showToast(phoneValidation.message, 'error');
+      document.getElementById('newFacPhone').focus();
+      return;
+    }
+    const phone = phoneValidation.formatted;
 
     const newId = 'FAC-' + zone.substring(0, 4).toUpperCase().replace(/\s+/g, '') + '-' + (store.data.recyclingFacilities.length + 1);
 
@@ -2680,7 +2748,7 @@ function initFacilityRegistrationForm() {
     populateRecordBatchFacilityDropdown(newId);
     form.reset();
     const phoneInput = document.getElementById('newFacPhone');
-    if (phoneInput) phoneInput.value = '+94 11 254 9988';
+    if (phoneInput) phoneInput.value = '11 254 9988';
 
     closeModal('registerFacilityModal');
     renderAllViews();
@@ -3360,7 +3428,7 @@ function renderActiveRequests(categoryFilter = 'all') {
           <div class="req-info-col">
             <div class="req-qty-line">Estimated: ${req.estimatedKg} kg ${req.actualKg ? `• <span class="text-emerald">Verified: ${req.actualKg} kg</span>` : ''}</div>
             <div class="req-location-line">📍 ${req.address} (Zone: ${req.zone})</div>
-            <div class="req-location-line">Assigned Team: <strong>${req.assignedCrew || 'Awaiting Dispatch'}</strong></div>
+            <div class="req-location-line">Assigned Team: <strong>${req.assignedCrew && req.assignedCrew !== 'Unassigned' ? req.assignedCrew : '<span style="color:#d97706; font-weight:700;">⚠️ Unassigned (Pending Dispatch)</span>'}</strong></div>
             ${req.facilityName ? `<div class="req-location-line" style="color:var(--primary); font-weight:600;">♻️ Drop-off MRF: <strong>${req.facilityName}</strong></div>` : ''}
             ${req.notes ? `<div class="req-notes-line">📝 ${req.notes}</div>` : ''}
             ${req.missedReason ? `<div class="req-notes-line" style="color:var(--danger); background:#fee2e2;">⚠️ Failure Reason: ${req.missedReason}</div>` : ''}
@@ -3380,8 +3448,9 @@ function renderActiveRequests(categoryFilter = 'all') {
                 if (req.status === 'Cancelled') {
                   return `<span class="status-pill cancelled">Cancelled</span>`;
                 }
+                const isUnassigned = !req.assignedCrew || req.assignedCrew === 'Unassigned' || req.status === 'Submitted';
                 return `
-                  <button class="btn btn-sm btn-outline btn-update-req" onclick="openUpdateRequestModal('${req.id}')">✏️ Update Request</button>
+                  <button class="btn btn-sm ${isUnassigned ? 'btn-primary' : 'btn-outline'} btn-update-req" onclick="openUpdateRequestModal('${req.id}')">${isUnassigned ? '📋 Assign Crew' : '✏️ Update Request'}</button>
                   ${req.status !== 'Collected' && req.status !== 'Missed' ? `
                     <button class="btn btn-sm btn-primary" onclick="openRecordCollectionModal('${req.id}')">⚖️ Weigh & Complete</button>
                   ` : req.status === 'Collected' ? `
@@ -3391,8 +3460,9 @@ function renderActiveRequests(categoryFilter = 'all') {
                   `}
                 `;
               } else {
+                const isUnassigned = !req.assignedCrew || req.assignedCrew === 'Unassigned' || req.status === 'Submitted';
                 return `
-                  <button class="btn btn-sm btn-outline btn-update-req" onclick="openUpdateRequestModal('${req.id}')">✏️ Update Request</button>
+                  <button class="btn btn-sm ${isUnassigned ? 'btn-primary' : 'btn-outline'} btn-update-req" onclick="openUpdateRequestModal('${req.id}')">${isUnassigned ? '📋 Assign Crew' : '✏️ Update Request'}</button>
                   ${req.status !== 'Collected' && req.status !== 'Missed' && req.status !== 'Cancelled' ? `
                     <button class="btn btn-sm btn-primary" onclick="openRecordCollectionModal('${req.id}')">Crew Action</button>
                     <button class="btn-cancel-req" onclick="cancelPickupRequest('${req.id}')">❌ Cancel</button>
@@ -3728,18 +3798,18 @@ function populateCrewSelector() {
   const selector = document.getElementById('activeCrewSelector');
   if (!selector) return;
 
-  if (store.data.crews.length === 0) {
-    selector.innerHTML = `<option value="">No crews registered yet</option>`;
-    return;
-  }
-
-  const currentVal = selector.value;
-  selector.innerHTML = store.data.crews.map(c => `
-    <option value="${c.name}">${c.name} (${c.zone} - ${c.truckId})</option>
+  const currentVal = selector.value || 'all';
+  const allOption = `<option value="all">🌟 All Assigned Requests (All Crews)</option>`;
+  const crewOptions = (store.data.crews || []).map(c => `
+    <option value="${c.name}">🚛 ${c.name} (${c.zone})</option>
   `).join('');
 
-  if (currentVal && Array.from(selector.options).some(o => o.value === currentVal)) {
+  selector.innerHTML = allOption + crewOptions;
+
+  if (currentVal && (currentVal === 'all' || Array.from(selector.options).some(o => o.value === currentVal))) {
     selector.value = currentVal;
+  } else {
+    selector.value = 'all';
   }
 }
 
@@ -3748,61 +3818,86 @@ function renderDailyJobs() {
   const selector = document.getElementById('activeCrewSelector');
   if (!container) return;
 
-  if (store.data.crews.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <span class="empty-state-icon">🚛</span>
-        <div class="empty-state-title">No Collection Teams Registered</div>
-        <p class="empty-state-desc">Register a collection fleet crew to assign and view daily routes.</p>
-        <button class="btn btn-primary" onclick="openModal('registerCrewModal')">+ Register New Crew</button>
-      </div>
-    `;
-    const metaBar = document.getElementById('activeCrewMetaBar');
-    if (metaBar) metaBar.style.display = 'none';
-    return;
-  }
+  // Retrieve current selection or default to 'all' to display all assigned requests
+  const selectedCrewName = selector ? (selector.value || 'all') : 'all';
+  const isAll = selectedCrewName === 'all';
 
-  const selectedCrewName = selector ? selector.value : '';
-  const currentCrewObj = store.data.crews.find(c => c.name === selectedCrewName);
+  // Filter all requests that have been assigned to a crew
+  const allAssignedJobs = (store.data.requests || []).filter(r => 
+    r.assignedCrew && 
+    r.assignedCrew !== 'Unassigned' && 
+    r.assignedCrew.trim() !== '' &&
+    r.status !== 'Cancelled'
+  );
+
+  const crewJobs = isAll 
+    ? allAssignedJobs 
+    : allAssignedJobs.filter(r => r.assignedCrew === selectedCrewName);
 
   // Render or update activeCrewMetaBar in the daily jobs subpane
   let metaBar = document.getElementById('activeCrewMetaBar');
-  if (!metaBar) {
-    const portalAlert = document.querySelector('.crew-portal-alert');
-    if (portalAlert) {
-      metaBar = document.createElement('div');
-      metaBar.id = 'activeCrewMetaBar';
-      metaBar.className = 'crew-active-meta-bar';
-      portalAlert.parentNode.insertBefore(metaBar, portalAlert.nextSibling);
+  if (!metaBar && container) {
+    metaBar = document.createElement('div');
+    metaBar.id = 'activeCrewMetaBar';
+    metaBar.className = 'crew-active-meta-bar';
+    container.parentNode.insertBefore(metaBar, container);
+  }
+
+  if (metaBar) {
+    metaBar.style.display = 'flex';
+    if (isAll) {
+      const pendingCount = allAssignedJobs.filter(j => j.status !== 'Collected' && j.status !== 'Missed').length;
+      const collectedCount = allAssignedJobs.filter(j => j.status === 'Collected').length;
+      const missedCount = allAssignedJobs.filter(j => j.status === 'Missed').length;
+      const totalEstimatedKg = allAssignedJobs.reduce((sum, j) => sum + (j.actualKg || j.estimatedKg || 0), 0);
+
+      metaBar.innerHTML = `
+        <div class="crew-meta-item"><span>📋 All Assigned Stops:</span> <strong>${allAssignedJobs.length} Stops</strong></div>
+        <div class="crew-meta-divider">|</div>
+        <div class="crew-meta-item"><span>⏳ Pending / In Route:</span> <strong class="text-primary">${pendingCount}</strong></div>
+        <div class="crew-meta-divider">|</div>
+        <div class="crew-meta-item"><span>✅ Collected & Weighed:</span> <strong class="text-emerald">${collectedCount}</strong></div>
+        ${missedCount > 0 ? `
+          <div class="crew-meta-divider">|</div>
+          <div class="crew-meta-item"><span class="text-danger">⚠️ Missed:</span> <strong class="text-danger">${missedCount}</strong></div>
+        ` : ''}
+        <div class="crew-meta-divider">|</div>
+        <div class="crew-meta-item"><span>⚖️ Est. Waste Load:</span> <strong>~${totalEstimatedKg} kg</strong></div>
+        <div class="crew-meta-divider">|</div>
+        <div class="crew-meta-item"><span>🚛 Fleets:</span> <strong>${store.data.crews.length} Crews</strong></div>
+      `;
+    } else {
+      const currentCrewObj = store.data.crews.find(c => c.name === selectedCrewName);
+      if (currentCrewObj) {
+        metaBar.innerHTML = `
+          <div class="crew-meta-item"><span>🎖️ Leader:</span> <strong>${currentCrewObj.leader || currentCrewObj.driver || 'N/A'}</strong></div>
+          <div class="crew-meta-divider">|</div>
+          <div class="crew-meta-item"><span>🚛 Driver:</span> <strong>${currentCrewObj.driver || 'N/A'}</strong></div>
+          <div class="crew-meta-divider">|</div>
+          <div class="crew-meta-item"><span>♻️ Center Mgr:</span> <strong>${currentCrewObj.centerManager || 'N/A'}</strong></div>
+          <div class="crew-meta-divider">|</div>
+          <div class="crew-meta-item"><span>📍 Zone:</span> <strong>${currentCrewObj.zone}</strong></div>
+          <div class="crew-meta-divider">|</div>
+          <div class="crew-meta-item"><span>🚚 Vehicle:</span> <strong>${currentCrewObj.truckId}</strong></div>
+          <div class="crew-meta-divider">|</div>
+          <div class="crew-meta-item"><span>📋 Stops:</span> <strong>${crewJobs.length} Assigned</strong></div>
+        `;
+      } else {
+        metaBar.style.display = 'none';
+      }
     }
   }
-
-  if (metaBar && currentCrewObj) {
-    metaBar.style.display = 'flex';
-    metaBar.innerHTML = `
-      <div class="crew-meta-item"><span>🎖️ Leader:</span> <strong>${currentCrewObj.leader || currentCrewObj.driver || 'N/A'}</strong></div>
-      <div class="crew-meta-divider">|</div>
-      <div class="crew-meta-item"><span>🚛 Driver:</span> <strong>${currentCrewObj.driver || 'N/A'}</strong></div>
-      <div class="crew-meta-divider">|</div>
-      <div class="crew-meta-item"><span>♻️ Drop-off Manager:</span> <strong>${currentCrewObj.centerManager || 'N/A'}</strong></div>
-      <div class="crew-meta-divider">|</div>
-      <div class="crew-meta-item"><span>📍 Zone:</span> <strong>${currentCrewObj.zone}</strong></div>
-      <div class="crew-meta-divider">|</div>
-      <div class="crew-meta-item"><span>🚚 Vehicle:</span> <strong>${currentCrewObj.truckId}</strong></div>
-    `;
-  } else if (metaBar) {
-    metaBar.style.display = 'none';
-  }
-
-  const crewJobs = store.data.requests.filter(r => r.assignedCrew === selectedCrewName);
 
   if (crewJobs.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <span class="empty-state-icon">📋</span>
-        <div class="empty-state-title">No Stops Currently Assigned</div>
-        <p class="empty-state-desc">No stops assigned to ${selectedCrewName || 'selected team'} for today. Dispatch pending requests from the dispatch queue.</p>
-        <button class="btn btn-outline" onclick="document.querySelector('[data-f2sub=dispatch-board]').click()">Go to Dispatch Queue →</button>
+        <div class="empty-state-title">${isAll ? 'No Assigned Requests Found' : `No Stops Assigned to ${selectedCrewName}`}</div>
+        <p class="empty-state-desc">${isAll 
+          ? 'There are currently no pickup requests assigned to any collection crew. Dispatch pending citizen requests from the dispatch queue.' 
+          : `No stops currently assigned to ${selectedCrewName} for today. Dispatch pending requests from the dispatch queue or switch to All Crews.`}
+        </p>
+        <button class="btn btn-primary" onclick="document.querySelector('[data-f2sub=dispatch-board]').click()">Go to Dispatch Queue →</button>
       </div>
     `;
     return;
@@ -3813,15 +3908,19 @@ function renderDailyJobs() {
       <div class="job-info-left">
         <div class="job-seq-badge">#${idx + 1}</div>
         <div class="job-main-data">
-          <span class="job-address">${job.address} (Zone ${job.zone})</span>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+            <span class="job-address">${job.address} (Zone ${job.zone})</span>
+            <span class="tag-badge info" style="font-weight:700;">🚛 ${job.assignedCrew}</span>
+            <span class="status-pill ${job.status === 'Collected' ? 'active' : job.status === 'Missed' ? 'danger' : 'pending'}" style="font-size:0.75rem;">${job.status}</span>
+          </div>
           <div class="job-submeta">
             <span>Resident: <strong>${job.residentName}</strong></span>
             <span>Waste: <strong>${job.category} (~${job.estimatedKg}kg)</strong></span>
-            <span>Slot: <strong>${job.timeSlot}</strong></span>
+            <span>Slot: <strong>${job.date} • ${job.timeSlot}</strong></span>
           </div>
-          ${job.notes ? `<span style="font-size:0.75rem; color:var(--text-muted);">Note: ${job.notes}</span>` : ''}
-          ${job.actualKg ? `<span style="font-size:0.75rem; color:var(--success); font-weight:700;">✅ Scale verified: ${job.actualKg} kg</span>` : ''}
-          ${job.missedReason ? `<span style="font-size:0.75rem; color:var(--danger); font-weight:700;">⚠️ Missed: ${job.missedReason}</span>` : ''}
+          ${job.notes ? `<span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:3px;">Note: ${job.notes}</span>` : ''}
+          ${job.actualKg ? `<span style="font-size:0.75rem; color:var(--success); font-weight:700; display:block; margin-top:2px;">✅ Scale verified: ${job.actualKg} kg (${job.facilityName || 'Storage Center'})</span>` : ''}
+          ${job.missedReason ? `<span style="font-size:0.75rem; color:var(--danger); font-weight:700; display:block; margin-top:2px;">⚠️ Missed: ${job.missedReason}</span>` : ''}
         </div>
       </div>
       <div class="job-actions">
@@ -3914,51 +4013,79 @@ function renderDispatchBoard() {
   const badge = document.getElementById('unassignedCountBadge');
   if (!tbody) return;
 
-  const unassigned = store.data.requests.filter(r => !r.assignedCrew || r.status === 'Submitted');
+  const unassigned = store.data.requests.filter(r => !r.assignedCrew || r.assignedCrew === 'Unassigned' || r.status === 'Submitted');
   if (badge) badge.textContent = `${unassigned.length} Pending Dispatch`;
 
   if (unassigned.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">No unassigned requests pending dispatch. All citizen requests have been assigned.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">No unassigned requests pending dispatch. All citizen requests have been manually assigned.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = unassigned.map(req => `
+  tbody.innerHTML = unassigned.map(req => {
+    // Sort available crews with zone match prioritized
+    const sortedCrews = [...(store.data.crews || [])].sort((a, b) => (a.zone === req.zone ? -1 : 1));
+    return `
     <tr>
       <td><strong>${req.id}</strong></td>
       <td>${req.residentName}<br><small class="text-muted">${req.address}</small></td>
       <td>${req.category}</td>
       <td>${req.estimatedKg} kg</td>
       <td><span class="tag-badge info">${req.zone}</span></td>
-      <td>${req.date}</td>
+      <td>${req.date} (${req.timeSlot})</td>
       <td>
         <select id="dispatchSelect_${req.id}" class="form-input" style="padding:4px 8px; font-size:0.8rem;">
-          ${store.data.crews.length > 0 ? store.data.crews.map(c => `<option value="${c.name}">${c.name}</option>`).join('') : '<option value="">No crews registered</option>'}
+          <option value="">-- Select Available Crew --</option>
+          ${sortedCrews.length > 0 ? sortedCrews.map(c => `
+            <option value="${c.name}">${c.name} (${c.zone}${c.zone === req.zone ? ' • Match' : ''})</option>
+          `).join('') : '<option value="" disabled>No crews registered</option>'}
         </select>
       </td>
       <td>
-        <button class="btn btn-sm btn-primary" onclick="assignRequestToCrew('${req.id}')" ${store.data.crews.length === 0 ? 'disabled' : ''}>Dispatch</button>
+        <button class="btn btn-sm btn-primary" onclick="assignRequestToCrew('${req.id}')" ${store.data.crews.length === 0 ? 'disabled' : ''}>Manual Dispatch</button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function assignRequestToCrew(reqId) {
   const select = document.getElementById(`dispatchSelect_${reqId}`);
+  if (!select) return;
   const crewName = select.value;
-  if (!crewName) {
-    alert('Please register a crew first before dispatching!');
+  if (!crewName || crewName === 'Unassigned') {
+    showToast('Please select an available crew before dispatching!', 'warning');
     return;
   }
   const req = store.data.requests.find(r => r.id === reqId);
   if (req) {
+    const oldCrew = req.assignedCrew;
     req.assignedCrew = crewName;
     req.status = 'Assigned';
+
+    // Update crew stops counters
+    const newCrewObj = store.data.crews.find(c => c.name === crewName);
+    if (newCrewObj) {
+      newCrewObj.stopsAssigned = (newCrewObj.stopsAssigned || 0) + 1;
+    }
+    if (oldCrew && oldCrew !== 'Unassigned' && oldCrew !== crewName) {
+      const oldCrewObj = store.data.crews.find(c => c.name === oldCrew);
+      if (oldCrewObj && oldCrewObj.stopsAssigned > 0) oldCrewObj.stopsAssigned -= 1;
+    }
+
+    store.data.activityFeed.unshift({
+      text: `Request ${req.id} manually dispatched to ${crewName} (${req.zone}).`,
+      time: 'Just now',
+      dot: 'blue'
+    });
+
     store.saveState();
     if (window.supabaseSync) {
       window.supabaseSync.updateRequest(req);
+      if (newCrewObj) window.supabaseSync.updateCrew(newCrewObj);
+      if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
     renderAllViews();
-    showToast(`Request ${reqId} dispatched to ${crewName}!`, 'success');
+    showToast(`Request ${reqId} successfully assigned to ${crewName}!`, 'success');
   }
 }
 

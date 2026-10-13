@@ -2695,6 +2695,50 @@ body.theme-dark .missed-alert-banner {
   color: var(--text-muted);
 }
 
+/* Sri Lankan Phone Input Group (+94 Prefix) */
+.phone-input-group {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  width: 100%;
+}
+
+.phone-country-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 12px;
+  background: var(--bg-surface-subtle, #f1f5f9);
+  color: var(--text-main, #0f172a);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-right: none;
+  border-top-left-radius: var(--radius-md, 8px);
+  border-bottom-left-radius: var(--radius-md, 8px);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.phone-country-code .flag-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.phone-input-group .phone-input {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  flex: 1;
+}
+
+.phone-input-group:focus-within .phone-country-code {
+  border-color: var(--primary, #059669);
+  color: var(--primary, #059669);
+  background: var(--primary-light, #ecfdf5);
+}
+
 /* Image Upload Dropzone */
 .upload-dropzone {
   border: 2px dashed var(--border-color);

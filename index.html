@@ -74,21 +74,6 @@
           <span>Log In to EcoPulse</span>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
-
-        <div style="margin-top:20px; padding:12px 14px; background:var(--bg-surface-subtle); border-radius:var(--radius-md); border:1px solid var(--border-color); font-size:0.75rem; color:var(--text-muted); line-height:1.5;">
-          <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text-main); margin-bottom:4px;">
-            <span>🔒 Secure Role-Based Access</span>
-          </div>
-          <div>Sign in with your registered email and password. Dashboard functions and permissions are assigned by your account role.</div>
-          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color); font-size:0.72rem; color:var(--text-subtle);">
-            <strong>Municipal System Accounts:</strong><br>
-            • Citizen: <code style="color:var(--primary);">resident@ecopulse.org</code><br>
-            • Crew Leader: <code style="color:var(--primary);">leader@ecopulse.org</code><br>
-            • Operations Manager: <code style="color:var(--primary);">manager@ecopulse.org</code><br>
-            • Administrator: <code style="color:var(--primary);">admin@ecopulse.org</code><br>
-            <span style="font-size:0.7rem; color:var(--text-muted);">(Default password: <code>password123</code>)</span>
-          </div>
-        </div>
       </form>
 
       <!-- Form 2: Create Account -->
@@ -139,8 +124,11 @@
           </div>
           <div class="form-group flex-1">
             <label for="regPhone" class="form-label">Contact Phone <span class="req">*</span></label>
-            <input type="tel" id="regPhone" class="form-input" placeholder="+94 77 123 4567" value="+94 77 123 4567" required>
-            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Format: +94 7X XXX XXXX or 07XXXXXXXX</small>
+            <div class="phone-input-group">
+              <span class="phone-country-code"><span class="flag-icon">🇱🇰</span> +94</span>
+              <input type="tel" id="regPhone" class="form-input phone-input" placeholder="77 123 4567" value="77 123 4567" maxlength="11" required>
+            </div>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Enter 9-digit local number (e.g. 77 123 4567)</small>
           </div>
         </div>
 
@@ -296,33 +284,6 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
               <span>Refresh Telemetry</span>
             </button>
-          </div>
-        </div>
-
-        <!-- Dynamic Role Permissions Banner -->
-        <div class="role-scope-banner" id="roleScopeBanner">
-          <div class="role-scope-content">
-            <span class="role-scope-icon" id="roleScopeIcon">👤</span>
-            <div>
-              <div class="role-scope-title" id="roleScopeTitle">Logged in as Resident User</div>
-              <div class="role-scope-desc" id="roleScopeDesc">Permitted: View Dashboard Telemetry, Request Waste Pickup, Cancel Pickup Requests, Browse Segregation Guide.</div>
-            </div>
-          </div>
-          <div class="role-scope-actions">
-            <button class="btn btn-sm btn-outline" id="bannerSwitchAccountBtn">Switch Account</button>
-          </div>
-        </div>
-
-        <!-- Quick Start / Helpful Welcome Banner -->
-        <div class="quick-welcome-banner" id="dashboardWelcomeBanner">
-          <div class="banner-sparkle">🌱</div>
-          <div class="banner-info">
-            <h3>Simple EcoPulse Quick Access</h3>
-            <p>Need waste collected? Schedule a pickup in seconds, check bin sorting rules, or view collection truck schedules.</p>
-          </div>
-          <div class="banner-actions">
-            <button class="btn btn-sm btn-primary" id="bannerNewPickupBtn">+ Request Pickup</button>
-            <button class="btn btn-sm btn-secondary" id="bannerQuickGuideBtn">📖 How It Works (1-Min)</button>
           </div>
         </div>
 
@@ -667,18 +628,20 @@
 
         <!-- F2 Subtab 1: Daily Collection Jobs -->
         <div class="f2-subpane active" id="f2-daily-jobs">
-          <div class="crew-portal-alert">
-            <div class="alert-icon">🚛</div>
-            <div class="alert-content">
-              <strong>Crew Portal View:</strong> Currently showing assigned stops for 
-              <span class="crew-select-inline">
-                <select id="activeCrewSelector" class="crew-dropdown">
-                  <!-- Dynamic crew options -->
-                </select>
-              </span>
-              <span class="text-muted">Crews can mark arrival, record actual weighed kilograms, or flag missed collections.</span>
+          <div class="section-top-row" style="margin-bottom: 14px;">
+            <div>
+              <h2 class="section-title">Daily Collection Jobs (Crew Manifest)</h2>
+              <p class="section-subtitle">Real-time route stops assigned to municipal collection crews</p>
+            </div>
+            <div class="filter-group">
+              <label for="activeCrewSelector" style="font-size:0.82rem; font-weight:600; color:var(--text-muted);">Crew Filter:</label>
+              <select id="activeCrewSelector" class="filter-select" style="font-weight:600;">
+                <!-- Dynamic crew options -->
+              </select>
             </div>
           </div>
+
+          <div id="activeCrewMetaBar" class="crew-active-meta-bar" style="margin-bottom: 16px;"></div>
 
           <div class="daily-jobs-container mt-3" id="dailyJobsList">
             <!-- Dynamic Job Cards with Complete / Missed action buttons -->
@@ -852,21 +815,6 @@
 
         <!-- F3 Subtab 1: Interactive Segregation Guide & Categories -->
         <div class="f3-subpane active" id="f3-segregation-guide">
-          <!-- Zone Segregation Centers Network Overview Banner -->
-          <div class="segregation-zone-network-card">
-            <div class="szn-left">
-              <span class="szn-icon">📍</span>
-              <div>
-                <h3 class="szn-title">Colombo Municipal Zone Segregation Network</h3>
-                <p class="szn-desc">1 dedicated primary segregation facility per zone (7 zones covered). Weighed pickup requests are automatically routed directly to their zone's center.</p>
-              </div>
-            </div>
-            <div class="szn-actions">
-              <button class="btn btn-sm btn-outline" type="button" onclick="document.querySelector('[data-f3sub=facilities]').click()">🏢 Browse Zone Centers →</button>
-              <button class="btn btn-sm btn-primary" type="button" onclick="openModal('registerFacilityModal')">+ Add Recycling Center</button>
-            </div>
-          </div>
-
           <!-- Live Item Lookup Box -->
           <div class="search-guide-hero">
             <div class="search-hero-content">
@@ -959,10 +907,6 @@
                 <option value="Kotte">Kotte</option>
                 <option value="Nugegoda">Nugegoda</option>
               </select>
-              <button class="btn btn-primary" id="addNewFacilityBtn" type="button">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                <span>+ Add Recycling Centre</span>
-              </button>
             </div>
           </div>
 
@@ -1060,15 +1004,7 @@
 
         <!-- F4 Subtab 2: Missed Collections Tracker -->
         <div class="f4-subpane" id="f4-missed-collections">
-          <div class="missed-alert-banner">
-            <div class="alert-icon">⚠️</div>
-            <div>
-              <strong>Missed Collection Auto-Detection:</strong>
-              <p>Whenever a collection team flags a stop as "Missed / Failed" (e.g. gate locked, hazardous contamination, vehicle breakdown), it enters this high-priority escalation log for immediate rescheduling or dispatch re-routing.</p>
-            </div>
-          </div>
-
-          <div class="card mt-3">
+          <div class="card">
             <div class="card-header">
               <h2 class="card-title">Active Missed / Failed Collections</h2>
               <span class="badge warn-badge" id="missedCountBadge">0 Escalations</span>
@@ -1254,13 +1190,6 @@
             <span class="step-tag">Recovery & Yields (F3)</span>
           </div>
         </div>
-        <div class="quick-try-box">
-          <div class="quick-try-text">
-            <strong>Want to explore with real sample data right now?</strong>
-            <p>Populate complete demonstration requests, crew trucks, routes, and recycling batches in 1 second.</p>
-          </div>
-          <button type="button" class="btn btn-primary" id="guideLoadSampleBtn">✨ Load Demo Data Now</button>
-        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-close-modal>Close Guide</button>
@@ -1367,13 +1296,6 @@
               <img src="" alt="Waste Preview" id="wasteImagePreviewImg" class="preview-img">
               <button type="button" class="btn-remove-preview" id="removeImagePreviewBtn">&times; Remove</button>
             </div>
-          </div>
-          <!-- Sample image preset helper -->
-          <div class="preset-img-row">
-            <span class="preset-hint">Quick test photo presets:</span>
-            <button type="button" class="preset-btn" data-img-preset="plastic">🧴 Plastic Bottles</button>
-            <button type="button" class="preset-btn" data-img-preset="cardboard">📦 Cardboard Boxes</button>
-            <button type="button" class="preset-btn" data-img-preset="ewaste">💻 Old Electronics</button>
           </div>
         </div>
 
@@ -1732,8 +1654,11 @@
           </div>
           <div class="form-group flex-1">
             <label for="newUserPhone" class="form-label">Phone Number <span class="req">*</span></label>
-            <input type="tel" id="newUserPhone" class="form-input" placeholder="+94 77 123 4567" required>
-            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Format: +94 7X XXX XXXX or 07XXXXXXXX</small>
+            <div class="phone-input-group">
+              <span class="phone-country-code"><span class="flag-icon">🇱🇰</span> +94</span>
+              <input type="tel" id="newUserPhone" class="form-input phone-input" placeholder="77 123 4567" maxlength="11" required>
+            </div>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Enter 9-digit local number (e.g. 77 123 4567)</small>
           </div>
         </div>
         <div class="form-row">
@@ -2020,9 +1945,12 @@
             </select>
           </div>
           <div class="form-group flex-1">
-            <label for="newFacPhone" class="form-label">Contact Phone (+94) <span class="req">*</span></label>
-            <input type="tel" id="newFacPhone" class="form-input" placeholder="+94 11 234 5678" value="+94 11 254 9988" required>
-            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Format: +94 XX XXX XXXX</small>
+            <label for="newFacPhone" class="form-label">Contact Phone <span class="req">*</span></label>
+            <div class="phone-input-group">
+              <span class="phone-country-code"><span class="flag-icon">🇱🇰</span> +94</span>
+              <input type="tel" id="newFacPhone" class="form-input phone-input" placeholder="11 254 9988" value="11 254 9988" maxlength="11" required>
+            </div>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Enter 9-digit local number (e.g. 11 254 9988)</small>
           </div>
         </div>
 
@@ -2140,7 +2068,11 @@
         <div class="form-row">
           <div class="form-group flex-1">
             <label for="personnelPhone" class="form-label">Contact Phone <span class="req">*</span></label>
-            <input type="tel" id="personnelPhone" class="form-input" placeholder="e.g. +94 77 123 4567" required>
+            <div class="phone-input-group">
+              <span class="phone-country-code"><span class="flag-icon">🇱🇰</span> +94</span>
+              <input type="tel" id="personnelPhone" class="form-input phone-input" placeholder="77 123 4567" maxlength="11" required>
+            </div>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Enter 9-digit local number (e.g. 77 123 4567)</small>
           </div>
           <div class="form-group flex-1">
             <label for="personnelEmail" class="form-label">Email Address</label>
@@ -2196,7 +2128,11 @@
           </div>
           <div class="form-group flex-1">
             <label for="editProfPhone" class="form-label">Phone Number <span class="req">*</span></label>
-            <input type="tel" id="editProfPhone" class="form-input" required>
+            <div class="phone-input-group">
+              <span class="phone-country-code"><span class="flag-icon">🇱🇰</span> +94</span>
+              <input type="tel" id="editProfPhone" class="form-input phone-input" placeholder="77 123 4567" maxlength="11" required>
+            </div>
+            <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">Enter 9-digit local number (e.g. 77 123 4567)</small>
           </div>
         </div>
         <div class="form-row">
