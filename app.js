@@ -18,7 +18,7 @@ const DEFAULT_SYSTEM_ACCOUNTS = [
     id: 'USR-101',
     name: 'Alex Mercer',
     email: 'resident@ecopulse.org',
-    password: 'password123',
+    password: 'Resident@1234',
     role: 'User',
     zone: 'Colombo Fort',
     address: '12 Galle Road, Colombo 03',
@@ -34,7 +34,7 @@ const DEFAULT_SYSTEM_ACCOUNTS = [
     id: 'USR-201',
     name: 'Kasun Wickramasinghe',
     email: 'leader@ecopulse.org',
-    password: 'password123',
+    password: 'Leader@1234',
     role: 'Crew Leader',
     zone: 'Colombo Fort',
     address: 'Municipal Depot 4, Colombo',
@@ -50,7 +50,7 @@ const DEFAULT_SYSTEM_ACCOUNTS = [
     id: 'USR-301',
     name: 'Sunil Perera',
     email: 'manager@ecopulse.org',
-    password: 'password123',
+    password: 'Manager@1234',
     role: 'Manager',
     zone: 'Colombo Fort',
     address: 'GreenPoly Processing Hub, North',
@@ -66,7 +66,7 @@ const DEFAULT_SYSTEM_ACCOUNTS = [
     id: 'USR-401',
     name: 'Chief Elena Rostova',
     email: 'admin@ecopulse.org',
-    password: 'password123',
+    password: 'Admin@1234',
     role: 'Admin',
     zone: 'Colombo Fort',
     address: 'City Hall Operations Center',
@@ -1025,20 +1025,31 @@ function applyRolePermissions(user) {
     }
   }
 
-  // 2. Header action buttons visibility
+  // 2. Account creation buttons visibility (Admin ONLY after login)
+  const isAdmin = (roleKey === 'admin');
+
   const btnNavNewUser = document.getElementById('navRegisterUserBtn');
   if (btnNavNewUser) {
-    btnNavNewUser.style.display = (roleKey === 'admin' || roleKey === 'manager') ? 'inline-flex' : 'none';
+    btnNavNewUser.style.display = isAdmin ? 'inline-flex' : 'none';
+  }
+
+  const btnF1NewUser = document.getElementById('f1NewUserBtn');
+  if (btnF1NewUser) {
+    btnF1NewUser.style.display = isAdmin ? 'inline-flex' : 'none';
+  }
+
+  const btnF4NewUser = document.getElementById('f4NewUserBtn');
+  if (btnF4NewUser) {
+    btnF4NewUser.style.display = isAdmin ? 'inline-flex' : 'none';
   }
 
   // 3. Filter Sidebar Navigation according to role
+  // Crew Leaders and Managers can access ALL functions (dashboard, function1, function2, function3, function4)
   const sidebarButtons = document.querySelectorAll('#sidebarNav .nav-tab-btn');
   let allowedTabs = ['dashboard'];
 
-  if (roleKey === 'admin' || roleKey === 'manager') {
+  if (roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader') {
     allowedTabs = ['dashboard', 'function1', 'function2', 'function3', 'function4'];
-  } else if (roleKey === 'crew_leader') {
-    allowedTabs = ['dashboard', 'function1', 'function2', 'function3'];
   } else {
     // User / Resident: only dashboard, Pickups (function1), and Segregation Guide (function3)
     allowedTabs = ['dashboard', 'function1', 'function3'];
@@ -1074,15 +1085,15 @@ function applyRolePermissions(user) {
     if (roleKey === 'admin') {
       bannerIcon.textContent = '🏛️';
       bannerTitle.textContent = `Logged in as Municipal Administrator (${user.name})`;
-      bannerDesc.textContent = 'Full System Access: All functions, Fleet schedules, MRF recycling yields, incident grievances & citizen database enabled.';
+      bannerDesc.textContent = 'Full System Access: All functions, Fleet schedules, MRF recycling yields, incident grievances, user account provisioning & citizen database enabled.';
     } else if (roleKey === 'manager') {
       bannerIcon.textContent = '♻️';
       bannerTitle.textContent = `Logged in as Operations / Center Manager (${user.name})`;
-      bannerDesc.textContent = 'All Functions Available: Manage collection fleets, MRF facility allocations, certified yield recovery & operations personnel.';
+      bannerDesc.textContent = 'Full Operational Access: Manage collection fleets, MRF facility allocations, certified yield recovery, route manifests & operations analytics.';
     } else if (roleKey === 'crew_leader') {
       bannerIcon.textContent = '🎖️';
       bannerTitle.textContent = `Logged in as Crew Leader (${user.name})`;
-      bannerDesc.textContent = 'Crew Operations Mode: Update pickup requests & verified weights, manage crew fleet records & update route manifests.';
+      bannerDesc.textContent = 'Full Operational Access: Update pickups & verified weights, manage fleet crews, record recyclable batches & view system analytics.';
     } else {
       bannerIcon.textContent = '👤';
       bannerTitle.textContent = `Logged in as Citizen User (${user.name})`;
@@ -1102,7 +1113,8 @@ function applyRolePermissions(user) {
   }
 
   // 6. Function 3 (Recycling & Sort Guides) Access Controls
-  const isPrivilegedRecycler = (roleKey === 'admin' || roleKey === 'manager');
+  // Admins, Managers, and Crew Leaders have privileged recycler actions
+  const isPrivilegedRecycler = (roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader');
   const f3Actions = document.getElementById('f3PaneActions');
   if (f3Actions) f3Actions.style.display = 'flex';
 
@@ -1223,57 +1235,169 @@ function initAuthSystem() {
   if (authTabRegisterBtn) authTabRegisterBtn.addEventListener('click', showRegisterTab);
   if (switchToLoginLink) switchToLoginLink.addEventListener('click', showLoginTab);
 
-  // Login Form Submission
+  // Helper to show auth error message
+  function showAuthError(msg) {
+    if (authErrorBanner && authErrorText) {
+      authErrorText.textContent = msg;
+      authErrorBanner.classList.remove('hidden');
+    } else {
+      showToast(msg, 'error');
+    }
+  }
+
+  // Clear auth error when user types
+  document.getElementById('loginEmail')?.addEventListener('input', () => authErrorBanner?.classList.add('hidden'));
+  document.getElementById('loginPassword')?.addEventListener('input', () => authErrorBanner?.classList.add('hidden'));
+
+  window.fillLoginCredentials = function(email, password) {
+    const emailInput = document.getElementById('loginEmail');
+    const passInput = document.getElementById('loginPassword');
+    if (emailInput) emailInput.value = email;
+    if (passInput) passInput.value = password;
+    if (authErrorBanner) authErrorBanner.classList.add('hidden');
+  };
+
+  // Login Form Submission with Supabase Authentication & Strict Password Verification
   if (authLoginForm) {
-    authLoginForm.addEventListener('submit', (e) => {
+    authLoginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-      const password = document.getElementById('loginPassword').value;
+      const emailInput = document.getElementById('loginEmail');
+      const passwordInput = document.getElementById('loginPassword');
+      const submitBtn = document.getElementById('loginSubmitBtn');
+      const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+      const password = passwordInput ? passwordInput.value : '';
 
-      const allUsers = [...(store.data.users || []), ...DEFAULT_SYSTEM_ACCOUNTS];
-      const found = allUsers.find(u => (u.email && u.email.toLowerCase() === email) || (u.id && u.id.toLowerCase() === email));
+      if (!email || !password) {
+        showAuthError('Please enter both your email address and password.');
+        return;
+      }
 
-      if (found) {
-        loginUser(found, true);
-      } else {
-        if (authErrorBanner && authErrorText) {
-          authErrorText.textContent = 'Account not found. Please verify your credentials or create a new citizen account.';
-          authErrorBanner.classList.remove('hidden');
+      const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>Verifying credentials...</span>`;
+      }
+
+      let authSuccess = false;
+      let authUser = null;
+      let authErrorMsg = '';
+
+      // 1. Try Supabase Authentication directly (auth.users)
+      if (window.supabaseSync) {
+        const authRes = await window.supabaseSync.signInWithPassword(email, password);
+        if (authRes.success) {
+          authSuccess = true;
+          authUser = authRes.user;
         } else {
-          showToast('Account not found. Please verify credentials.', 'error');
+          authErrorMsg = authRes.error;
         }
+      }
+
+      // 2. Fallback check for known demo system accounts with strict password verification
+      if (!authSuccess) {
+        const allUsers = [...(store.data.users || []), ...DEFAULT_SYSTEM_ACCOUNTS];
+        const localFound = allUsers.find(u => (u.email && u.email.toLowerCase() === email) || (u.id && u.id.toLowerCase() === email));
+
+        if (localFound && localFound.password && localFound.password === password) {
+          authSuccess = true;
+          authUser = localFound;
+        }
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      }
+
+      if (!authSuccess) {
+        showAuthError(authErrorMsg || 'Invalid login credentials. Please check your email and password.');
+        return;
+      }
+
+      // 3. Resolve user profile and role from Supabase public.users or local store
+      let profileUser = null;
+      const allUsers = [...(store.data.users || []), ...DEFAULT_SYSTEM_ACCOUNTS];
+      profileUser = allUsers.find(u => (u.email && u.email.toLowerCase() === email) || (u.id && u.id === authUser?.id));
+
+      if (!profileUser && authUser) {
+        const meta = authUser.user_metadata || {};
+        profileUser = {
+          id: authUser.id || ('USR-' + Date.now().toString().slice(-4)),
+          name: meta.name || email.split('@')[0],
+          email: authUser.email || email,
+          password: password,
+          role: meta.role || (email.includes('admin') ? 'Admin' : email.includes('manager') ? 'Manager' : email.includes('leader') ? 'Crew Leader' : 'Resident'),
+          zone: meta.zone || 'Colombo Fort',
+          phone: meta.phone || '+94 77 123 4567',
+          address: meta.address || 'Curbside',
+          accountType: meta.accountType || (meta.role === 'Admin' ? 'Municipal Admin' : meta.role === 'Manager' ? 'Center Manager' : meta.role === 'Crew Leader' ? 'Operations Personnel' : 'Residential Account'),
+          ecoPoints: 0,
+          totalRecycledKg: 0,
+          pickupsCompleted: 0,
+          status: 'Active',
+          registeredOn: new Date().toISOString().split('T')[0]
+        };
+        store.data.users.push(profileUser);
+      }
+
+      if (profileUser) {
+        loginUser(profileUser, true);
+      } else {
+        showAuthError('User authenticated, but profile could not be loaded. Please try again.');
       }
     });
   }
 
-  // Register Form Submission
+  // Register Form Submission with Supabase Auth (auth.users)
   if (authRegisterForm) {
-    authRegisterForm.addEventListener('submit', (e) => {
+    authRegisterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('regFullName').value.trim();
-      const email = document.getElementById('regEmail').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
       const password = document.getElementById('regPassword').value;
-      // Public self-registration creates ONLY Citizen User accounts.
-      // Staff accounts (Crew Leader, Manager, Admin) are provisioned through the administrative backend.
       const role = 'Resident';
       const zone = document.getElementById('regZone').value;
       const address = document.getElementById('regAddress').value.trim();
       const phoneRaw = document.getElementById('regPhone').value.trim();
+      const regSubmitBtn = document.getElementById('regSubmitBtn');
 
       const phoneValidation = validateSriLankanPhoneNumber(phoneRaw);
       if (!phoneValidation.valid) {
-        if (authErrorBanner && authErrorText) {
-          authErrorText.textContent = phoneValidation.message;
-          authErrorBanner.classList.remove('hidden');
-        } else {
-          showToast(phoneValidation.message, 'error');
-        }
+        showAuthError(phoneValidation.message);
         document.getElementById('regPhone').focus();
         return;
       }
       const phone = phoneValidation.formatted;
 
-      const newId = 'USR-' + Date.now().toString().slice(-4);
+      const originalRegText = regSubmitBtn ? regSubmitBtn.innerHTML : '';
+      if (regSubmitBtn) {
+        regSubmitBtn.disabled = true;
+        regSubmitBtn.innerHTML = `<span>Registering in Supabase Cloud...</span>`;
+      }
+
+      // 1. Register in Supabase Auth
+      let authId = null;
+      if (window.supabaseSync) {
+        const regRes = await window.supabaseSync.signUp(email, password, {
+          name,
+          role: 'Resident',
+          zone,
+          address,
+          phone
+        });
+        if (regRes.success && regRes.user) {
+          authId = regRes.user.id;
+        } else if (!regRes.success && regRes.error && !regRes.error.toLowerCase().includes('already registered')) {
+          if (regSubmitBtn) {
+            regSubmitBtn.disabled = false;
+            regSubmitBtn.innerHTML = originalRegText;
+          }
+          showAuthError(regRes.error);
+          return;
+        }
+      }
+
+      const newId = authId || ('USR-' + Date.now().toString().slice(-4));
       const newUser = {
         id: newId,
         name: name,
@@ -1304,6 +1428,11 @@ function initAuthSystem() {
       if (window.supabaseSync) {
         window.supabaseSync.pushUser(newUser);
         if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
+      }
+
+      if (regSubmitBtn) {
+        regSubmitBtn.disabled = false;
+        regSubmitBtn.innerHTML = originalRegText;
       }
 
       authRegisterForm.reset();
@@ -1660,7 +1789,16 @@ function initModals() {
   }
 
   const btnUser = document.getElementById('f4NewUserBtn');
-  if (btnUser) btnUser.addEventListener('click', () => openModal('registerUserModal'));
+  if (btnUser) {
+    btnUser.addEventListener('click', () => {
+      const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
+      if (activeRoleKey !== 'admin') {
+        showToast('Only Municipal Administrators can create accounts.', 'error');
+        return;
+      }
+      openModal('registerUserModal');
+    });
+  }
 
   const btnAddSeg = document.getElementById('openAddSegItemBtn');
   if (btnAddSeg) btnAddSeg.addEventListener('click', () => openModal('addSegregationItemModal'));
@@ -1672,10 +1810,28 @@ function initModals() {
   if (btnTopProf) btnTopProf.addEventListener('click', openUserProfileModal);
 
   const btnNavNewUser = document.getElementById('navRegisterUserBtn');
-  if (btnNavNewUser) btnNavNewUser.addEventListener('click', () => openModal('registerUserModal'));
+  if (btnNavNewUser) {
+    btnNavNewUser.addEventListener('click', () => {
+      const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
+      if (activeRoleKey !== 'admin') {
+        showToast('Only Municipal Administrators can create accounts.', 'error');
+        return;
+      }
+      openModal('registerUserModal');
+    });
+  }
 
   const btnF1NewUser = document.getElementById('f1NewUserBtn');
-  if (btnF1NewUser) btnF1NewUser.addEventListener('click', () => openModal('registerUserModal'));
+  if (btnF1NewUser) {
+    btnF1NewUser.addEventListener('click', () => {
+      const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
+      if (activeRoleKey !== 'admin') {
+        showToast('Only Municipal Administrators can create accounts.', 'error');
+        return;
+      }
+      openModal('registerUserModal');
+    });
+  }
 
   // Close buttons
   document.querySelectorAll('[data-close-modal]').forEach(btn => {
@@ -1718,6 +1874,16 @@ function initModals() {
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
+
+  // Restrict account provisioning modal to Municipal Admin only
+  if (modalId === 'registerUserModal') {
+    const roleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
+    if (roleKey !== 'admin') {
+      showToast('Access Denied: Only Municipal Administrators can create or provision new accounts.', 'error');
+      return;
+    }
+  }
+
   modal.removeAttribute('aria-hidden');
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -1780,7 +1946,8 @@ function openUserProfileModal() {
   const content = document.getElementById('userProfileModalContent');
   if (!content) return;
 
-  const usersList = store.data.users || [];
+  const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole || user.role);
+  const isAdmin = (activeRoleKey === 'admin');
 
   content.innerHTML = `
     <div style="display:flex; gap:16px; align-items:center; margin-bottom:16px;">
@@ -1821,9 +1988,11 @@ function openUserProfileModal() {
     ` : ''}
 
     <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-      <button class="btn btn-sm btn-primary" id="openCreateUserFromModalBtn">
-        + Create New Account
-      </button>
+      ${isAdmin ? `
+        <button class="btn btn-sm btn-primary" id="openCreateUserFromModalBtn">
+          + Create New Account
+        </button>
+      ` : '<div></div>'}
       <button class="btn btn-sm btn-outline" id="openEditProfileBtn">✏️ Edit Account Details</button>
     </div>
   `;
@@ -1842,6 +2011,10 @@ function openUserProfileModal() {
   const createBtn = document.getElementById('openCreateUserFromModalBtn');
   if (createBtn) {
     createBtn.addEventListener('click', () => {
+      if (!isAdmin) {
+        showToast('Only Municipal Administrators can create new accounts.', 'error');
+        return;
+      }
       closeModal('userProfileModal');
       openModal('registerUserModal');
     });
@@ -2998,6 +3171,12 @@ function initUserRegistrationForm() {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
+    const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
+    if (activeRoleKey !== 'admin') {
+      showToast('Unauthorized: Only Municipal Administrators can create or provision new accounts.', 'error');
+      return;
+    }
+
     const name = document.getElementById('newUserFullName').value.trim();
     const email = document.getElementById('newUserEmail').value.trim();
     const phoneRaw = document.getElementById('newUserPhone').value.trim();
@@ -3149,14 +3328,14 @@ function filterSegregationGuide(query = '', bin = 'all') {
 
   if (filtered.length === 0) {
     const roleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
-    const addBtnHtml = (roleKey === 'admin' || roleKey === 'manager')
+    const addBtnHtml = (roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader')
       ? `<button class="btn btn-primary" onclick="openModal('addSegregationItemModal')">+ Add Item to Guide</button>`
       : '';
     container.innerHTML = `
       <div class="empty-state" style="grid-column: 1/-1;">
         <span class="empty-state-icon">🔍</span>
         <div class="empty-state-title">No items found matching "${query}"</div>
-        <p class="empty-state-desc">${(roleKey === 'admin' || roleKey === 'manager') ? 'You can define and add this item to the municipal segregation guide.' : 'Please try searching for another common waste item or browse categories below.'}</p>
+        <p class="empty-state-desc">${(roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader') ? 'You can define and add this item to the municipal segregation guide.' : 'Please try searching for another common waste item or browse categories below.'}</p>
         ${addBtnHtml}
       </div>
     `;
@@ -3993,7 +4172,7 @@ function renderCrewRoster() {
         </button>
         ${(function() {
           const roleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
-          if (roleKey === 'admin' || roleKey === 'manager') {
+          if (roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader') {
             return `
               <button class="btn-outline-danger" onclick="deleteCrew('${c.id}')">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -4186,7 +4365,7 @@ function renderRecyclableBatches() {
 
   if (store.data.recyclableBatches.length === 0) {
     const roleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
-    const actionBtn = (roleKey === 'admin' || roleKey === 'manager')
+    const actionBtn = (roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader')
       ? `<button class="btn btn-primary" onclick="openModal('recordBatchModal')">+ Record Recyclable Batch</button>`
       : '';
     container.innerHTML = `
@@ -4425,31 +4604,46 @@ function renderUserAdmin(query = '') {
     return;
   }
 
+  const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
+  const isAdmin = (activeRoleKey === 'admin');
+
   tbody.innerHTML = filtered.map(u => `
     <tr>
       <td><strong>${u.id}</strong></td>
       <td>${u.name}</td>
       <td>${u.email}<br><small class="text-muted">${formatToSriLankanPhone(u.phone)}</small></td>
       <td>
-        <select class="form-input" style="padding:4px 8px; font-size:0.78rem; font-weight:600; width:auto; border-radius:var(--radius-sm);" onchange="updateUserRole('${u.id}', this.value)" title="Change role in backend database">
-          <option value="User" ${normalizeRole(u.role) === 'user' ? 'selected' : ''}>👤 Citizen User</option>
-          <option value="Crew Leader" ${normalizeRole(u.role) === 'crew_leader' ? 'selected' : ''}>🎖️ Crew Leader</option>
-          <option value="Manager" ${normalizeRole(u.role) === 'manager' ? 'selected' : ''}>♻️ Center Manager</option>
-          <option value="Admin" ${normalizeRole(u.role) === 'admin' ? 'selected' : ''}>🏛️ Municipal Admin</option>
-          <option value="Crew Driver" ${u.role === 'Crew Driver' ? 'selected' : ''}>🚛 Crew Driver</option>
-        </select>
+        ${isAdmin ? `
+          <select class="form-input" style="padding:4px 8px; font-size:0.78rem; font-weight:600; width:auto; border-radius:var(--radius-sm);" onchange="updateUserRole('${u.id}', this.value)" title="Change role in backend database">
+            <option value="User" ${normalizeRole(u.role) === 'user' ? 'selected' : ''}>👤 Citizen User</option>
+            <option value="Crew Leader" ${normalizeRole(u.role) === 'crew_leader' ? 'selected' : ''}>🎖️ Crew Leader</option>
+            <option value="Manager" ${normalizeRole(u.role) === 'manager' ? 'selected' : ''}>♻️ Center Manager</option>
+            <option value="Admin" ${normalizeRole(u.role) === 'admin' ? 'selected' : ''}>🏛️ Municipal Admin</option>
+            <option value="Crew Driver" ${u.role === 'Crew Driver' ? 'selected' : ''}>🚛 Crew Driver</option>
+          </select>
+        ` : `
+          <span class="status-pill ${normalizeRole(u.role) === 'admin' ? 'active' : normalizeRole(u.role) === 'manager' ? 'pending' : 'active'}" style="font-weight:600; font-size:0.78rem;">
+            ${u.role}
+          </span>
+        `}
       </td>
       <td>${u.zone}</td>
       <td><span class="status-pill active">${u.status}</span></td>
       <td>${u.registeredOn}</td>
       <td>
-        <button class="link-btn" onclick="alert('Profile and permissions for ${u.name} are active. Role is controlled via the dropdown.')">Status</button>
+        <button class="link-btn" onclick="alert('Profile and permissions for ${u.name} are active. Role is managed by administrators.')">Status</button>
       </td>
     </tr>
   `).join('');
 }
 
 function updateUserRole(userId, newRole) {
+  const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
+  if (activeRoleKey !== 'admin') {
+    showToast('Unauthorized: Only Municipal Administrators can change user roles.', 'error');
+    renderUserAdmin();
+    return;
+  }
   const user = store.data.users.find(u => u.id === userId);
   if (!user) return;
   const oldRole = user.role;

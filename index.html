@@ -74,6 +74,19 @@
           <span>Log In to EcoPulse</span>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
+
+        <div style="margin-top:20px; padding-top:16px; border-top:1px dashed var(--border-color); font-size:0.78rem;">
+          <div style="color:var(--text-muted); margin-bottom:8px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+            <span>⚡ Quick-Fill Demo Credentials:</span>
+            <span style="font-size:0.7rem; color:var(--text-subtle);">Supabase Auth</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <button type="button" class="btn btn-sm btn-outline" onclick="fillLoginCredentials('admin@ecopulse.org', 'Admin@1234')" style="font-size:0.75rem; padding:5px 8px; justify-content:flex-start;">🏛️ Admin</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="fillLoginCredentials('manager@ecopulse.org', 'Manager@1234')" style="font-size:0.75rem; padding:5px 8px; justify-content:flex-start;">♻️ Manager</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="fillLoginCredentials('leader@ecopulse.org', 'Leader@1234')" style="font-size:0.75rem; padding:5px 8px; justify-content:flex-start;">🎖️ Crew Leader</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="fillLoginCredentials('resident@ecopulse.org', 'Resident@1234')" style="font-size:0.75rem; padding:5px 8px; justify-content:flex-start;">👤 Resident</button>
+          </div>
+        </div>
       </form>
 
       <!-- Form 2: Create Account -->
@@ -184,7 +197,7 @@
         <span>Report Issue</span>
       </button>
 
-      <button class="nav-action-btn secondary-action" id="navRegisterUserBtn" title="Register / Create New User Account">
+      <button class="nav-action-btn secondary-action" id="navRegisterUserBtn" title="Register / Create New User Account" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
         <span>+ New Account</span>
       </button>
@@ -447,7 +460,7 @@
             <p class="pane-subtitle">Manage user accounts, submit pickup requests with photos, track status in real-time, and view schedules.</p>
           </div>
           <div class="pane-actions">
-            <button class="btn btn-outline" id="f1NewUserBtn" title="Create New User Account">
+            <button class="btn btn-outline" id="f1NewUserBtn" title="Create New User Account" style="display:none;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
               <span>+ New Account</span>
             </button>
@@ -1045,7 +1058,7 @@
                 <div class="table-search-box">
                   <input type="text" id="userAdminSearchInput" placeholder="Filter users by name, role or zone..." class="input-text">
                 </div>
-                <button class="btn btn-sm btn-primary" id="f4NewUserBtn" onclick="openModal('registerUserModal')">+ Provision Account</button>
+                <button class="btn btn-sm btn-primary" id="f4NewUserBtn" onclick="openModal('registerUserModal')" style="display:none;">+ Provision Account</button>
               </div>
             </div>
             <div class="card-body p-0">

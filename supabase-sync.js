@@ -519,6 +519,82 @@ class SupabaseSyncService {
     return await this.insertRecord('activity_feed', { text: item.text, time: item.time, dot: item.dot });
   }
 
+  // ---------------------------------------------------------------------------
+  // Supabase Authentication (auth.users)
+  // ---------------------------------------------------------------------------
+  async signInWithPassword(email, password) {
+    try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const res = await fetch(`${this.url}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'apikey': this.key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: cleanEmail, password: password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error_description || data.msg || data.message || 'Invalid login credentials. Please check your email and password.'
+        };
+      }
+      return {
+        success: true,
+        user: data.user,
+        session: data,
+        accessToken: data.access_token
+      };
+    } catch (err) {
+      console.warn('Supabase Auth error:', err);
+      return { success: false, error: err.message || 'Network error during authentication.' };
+    }
+  }
+
+  async signUp(email, password, userData = {}) {
+    try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const res = await fetch(`${this.url}/auth/v1/signup`, {
+        method: 'POST',
+        headers: {
+          'apikey': this.key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: cleanEmail,
+          password: password,
+          data: userData
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error_description || data.msg || data.message || 'Account registration failed.'
+        };
+      }
+      return {
+        success: true,
+        user: data.user || data,
+        session: data.session
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async signOut() {
+    try {
+      await fetch(`${this.url}/auth/v1/logout`, {
+        method: 'POST',
+        headers: this.headers
+      });
+    } catch (err) {
+      // ignore
+    }
+  }
+
   // Update visual badge in navbar
   updateStatusBadge(status, title) {
     const badge = document.getElementById('supabaseStatusBadge');
