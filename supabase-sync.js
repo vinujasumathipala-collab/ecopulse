@@ -285,6 +285,7 @@ class SupabaseSyncService {
       name: f.name,
       type: f.type,
       location: f.location,
+      zone: f.zone || 'Colombo Fort',
       capacity_tons: Number(f.capacityTons || 100),
       current_load_tons: Number(f.currentLoadTons || 0),
       accepted_materials: Array.isArray(f.acceptedMaterials) ? f.acceptedMaterials : [],
@@ -299,6 +300,7 @@ class SupabaseSyncService {
       name: r.name,
       type: r.type,
       location: r.location,
+      zone: r.zone || 'Colombo Fort',
       capacityTons: Number(r.capacity_tons),
       currentLoadTons: Number(r.current_load_tons),
       acceptedMaterials: r.accepted_materials || [],
@@ -377,10 +379,21 @@ class SupabaseSyncService {
         // Only populate if cloud has rows, otherwise upload initial local state
         if (usersData.length > 0) {
           store.data.users = usersData.map(u => this.mapUserFromDb(u));
-          // If active user is present in cloud, update userProfile
-          const matchUser = store.data.users.find(u => u.id === store.data.userProfile.id) || store.data.users[0];
-          if (matchUser) {
-            store.data.userProfile = { ...matchUser };
+          // If active user is present in cloud, update userProfile & currentUser from database
+          if (store.data.currentUser) {
+            const matchCurrent = store.data.users.find(u => u.id === store.data.currentUser.id || u.email === store.data.currentUser.email);
+            if (matchCurrent) {
+              store.data.currentUser = { ...matchCurrent };
+              store.data.userProfile = { ...matchCurrent };
+            }
+          } else {
+            const matchUser = store.data.users.find(u => u.id === store.data.userProfile.id) || store.data.users[0];
+            if (matchUser) {
+              store.data.userProfile = { ...matchUser };
+            }
+          }
+          if (typeof applyRolePermissions === 'function') {
+            applyRolePermissions(store.data.currentUser || store.data.userProfile);
           }
         }
 
@@ -432,6 +445,14 @@ class SupabaseSyncService {
     return await this.insertRecord('users', this.mapUserToDb(user));
   }
 
+  async updateUser(user) {
+    return await this.updateRecord('users', 'id', user.id, this.mapUserToDb(user));
+  }
+
+  async deleteUser(userId) {
+    return await this.deleteRecord('users', 'id', userId);
+  }
+
   async pushRequest(req) {
     return await this.insertRecord('pickup_requests', this.mapRequestToDb(req));
   }
@@ -470,6 +491,10 @@ class SupabaseSyncService {
 
   async pushFacility(f) {
     return await this.insertRecord('recycling_facilities', this.mapFacilityToDb(f));
+  }
+
+  async updateFacility(f) {
+    return await this.updateRecord('recycling_facilities', 'id', f.id, this.mapFacilityToDb(f));
   }
 
   async pushBatch(b) {
