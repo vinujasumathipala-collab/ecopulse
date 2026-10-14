@@ -933,6 +933,16 @@ function switchMainTab(tabId) {
     p.classList.toggle('active', p.id === `tab-${tabId}`);
   });
 
+  if (tabId === 'function3') {
+    const isPrivileged = store.data.activeRole === 'admin' || store.data.activeRole === 'manager' || store.data.activeRole === 'crew_leader';
+    if (!isPrivileged) {
+      const f3GuideTab = document.querySelector('[data-f3sub="segregation-guide"]');
+      if (f3GuideTab && !f3GuideTab.classList.contains('active')) {
+        f3GuideTab.click();
+      }
+    }
+  }
+
   if (tabId === 'dashboard' || tabId === 'function4') {
     setTimeout(renderCharts, 50);
   }
@@ -941,11 +951,20 @@ function switchMainTab(tabId) {
 function setupSubtabs(attrName, paneClass) {
   document.querySelectorAll(`[${attrName}]`).forEach(btn => {
     btn.addEventListener('click', () => {
+      const targetSubId = btn.getAttribute(attrName);
+
+      // Guard: Standard users / citizens cannot access operational recycling tabs in Function 3
+      if (attrName === 'data-f3sub') {
+        const isPrivileged = store.data.activeRole === 'admin' || store.data.activeRole === 'manager' || store.data.activeRole === 'crew_leader';
+        if (!isPrivileged && targetSubId !== 'segregation-guide') {
+          return;
+        }
+      }
+
       const parentSubbar = btn.closest('.subtab-bar');
       parentSubbar.querySelectorAll(`[${attrName}]`).forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
-      const targetSubId = btn.getAttribute(attrName);
       const parentPane = btn.closest('.tab-pane');
       parentPane.querySelectorAll(`.${paneClass}`).forEach(pane => {
         pane.classList.remove('active');
@@ -1103,22 +1122,45 @@ function applyRolePermissions(user) {
   }
 
   // 6. Function 3 (Recycling & Sort Guides) Access Controls
-  // Admins, Managers, and Crew Leaders have privileged recycler actions
+  // Admins, Managers, and Crew Leaders have privileged recycler actions & operational management views
   const isPrivilegedRecycler = (roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader');
   const f3Actions = document.getElementById('f3PaneActions');
-  if (f3Actions) f3Actions.style.display = 'flex';
+  if (f3Actions) f3Actions.style.display = isPrivilegedRecycler ? 'flex' : 'none';
 
   const btnIntake = document.getElementById('openIntakeModalBtn');
   if (btnIntake) btnIntake.style.display = isPrivilegedRecycler ? 'inline-flex' : 'none';
 
   const btnFacility = document.getElementById('openFacilityModalBtn');
-  if (btnFacility) btnFacility.style.display = 'inline-flex';
+  if (btnFacility) btnFacility.style.display = isPrivilegedRecycler ? 'inline-flex' : 'none';
 
   const btnAddSeg = document.getElementById('openAddSegItemBtn');
   if (btnAddSeg) btnAddSeg.style.display = isPrivilegedRecycler ? 'inline-flex' : 'none';
 
   const btnQuickBatch = document.getElementById('quickAddBatchBtn');
   if (btnQuickBatch) btnQuickBatch.style.display = isPrivilegedRecycler ? 'inline-flex' : 'none';
+
+  // Function 3 Subtabs: Standard users / residents must NOT see operational tabs:
+  // 1. Recyclable Batches & Allocation
+  // 2. Recycling Centres Directory
+  // 3. Processing Yields & History
+  document.querySelectorAll('[data-f3sub="recycling-batches"], [data-f3sub="facilities"], [data-f3sub="recycling-history"], .f3-admin-tab').forEach(tab => {
+    tab.style.display = isPrivilegedRecycler ? '' : 'none';
+  });
+
+  // Ensure standard users land exclusively on the Segregation Guidance tab
+  const f3GuideTab = document.querySelector('[data-f3sub="segregation-guide"]');
+  if (!isPrivilegedRecycler) {
+    if (f3GuideTab && (!f3GuideTab.classList.contains('active') || document.querySelector('.f3-subpane.active:not(#f3-segregation-guide)'))) {
+      f3GuideTab.click();
+    }
+  }
+
+  // Dashboard quick actions
+  const qaDaily = document.getElementById('qaDailyJobs');
+  if (qaDaily) qaDaily.style.display = isPrivilegedRecycler ? 'flex' : 'none';
+
+  const qaRecycle = document.getElementById('qaRecycleIntake');
+  if (qaRecycle) qaRecycle.style.display = isPrivilegedRecycler ? 'flex' : 'none';
 
   store.saveState();
 }
@@ -1300,7 +1342,7 @@ function initAuthSystem() {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnText;
           }
-          showAuthError(`Invalid password for ${defaultMatch.name}. For demo testing, default password is: ${defaultMatch.password}`);
+          showAuthError('Incorrect password.');
           return;
         }
 
@@ -1315,7 +1357,7 @@ function initAuthSystem() {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnText;
           }
-          showAuthError('Invalid password. Please check your credentials and try again.');
+          showAuthError('Incorrect password.');
           return;
         }
         authSuccess = true;
@@ -1342,7 +1384,7 @@ function initAuthSystem() {
       }
 
       if (!authSuccess) {
-        showAuthError(authErrorMsg || 'Invalid login credentials. Please check your email and password.');
+        showAuthError(authErrorMsg || 'Incorrect password.');
         return;
       }
 

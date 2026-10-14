@@ -550,7 +550,7 @@ class SupabaseSyncService {
       }
       const dbUser = users[0];
       if (dbUser.password && dbUser.password !== password) {
-        return { success: false, error: 'Invalid password. Please check your credentials and try again.' };
+        return { success: false, error: 'Incorrect password.' };
       }
       return {
         success: true,
