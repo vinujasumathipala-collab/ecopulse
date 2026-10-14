@@ -1307,56 +1307,29 @@ function initAuthSystem() {
         // Default credentials verified!
         authSuccess = true;
         authUser = storeUserMatch ? { ...defaultMatch, ...storeUserMatch } : { ...defaultMatch };
-
-        if (window.supabaseSync) {
-          window.supabaseSync.signInWithPassword(email, password).catch(() => {});
+      } else if (storeUserMatch) {
+        // Account exists in store / database sync
+        const validPassword = storeUserMatch.password || storedCreds[cleanEmail];
+        if (validPassword && password !== validPassword) {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+          }
+          showAuthError('Invalid password. Please check your credentials and try again.');
+          return;
         }
-      } else if (storeUserMatch || expectedPassword) {
-        // Account exists in user list or local credential vault
-        if (expectedPassword) {
-          if (password !== expectedPassword) {
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = originalBtnText;
-            }
-            showAuthError('Invalid password. Please check your credentials and try again.');
-            return;
-          }
-          authSuccess = true;
-          authUser = storeUserMatch || { id: 'USR-' + Date.now().toString().slice(-4), email: cleanEmail, name: cleanEmail.split('@')[0], role: 'Resident' };
-
-          if (window.supabaseSync) {
-            window.supabaseSync.signInWithPassword(email, password).catch(() => {});
-          }
-        } else {
-          // If no local password is on record, MUST verify with Supabase Auth
-          let verified = false;
-          if (window.supabaseSync) {
-            const authRes = await window.supabaseSync.signInWithPassword(email, password);
-            if (authRes.success) {
-              verified = true;
-              authSuccess = true;
-              authUser = storeUserMatch || authRes.user;
-            } else {
-              authErrorMsg = authRes.error;
-            }
-          }
-          if (!verified) {
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = originalBtnText;
-            }
-            showAuthError(authErrorMsg || 'Invalid login credentials. Please check your email and password.');
-            return;
-          }
-        }
+        authSuccess = true;
+        authUser = storeUserMatch;
       } else {
-        // Standard user or Supabase Auth registered account
+        // Account not yet cached locally, verify directly with Supabase public.users table
         if (window.supabaseSync) {
-          const authRes = await window.supabaseSync.signInWithPassword(email, password);
+          const authRes = await window.supabaseSync.authenticateUser(cleanEmail, password);
           if (authRes.success) {
             authSuccess = true;
             authUser = authRes.user;
+            if (!store.data.users.some(u => u.id === authRes.user.id)) {
+              store.data.users.push(authRes.user);
+            }
           } else {
             authErrorMsg = authRes.error;
           }
@@ -1435,29 +1408,22 @@ function initAuthSystem() {
         regSubmitBtn.innerHTML = `<span>Registering in Supabase Cloud...</span>`;
       }
 
-      // 1. Register in Supabase Auth
-      let authId = null;
-      if (window.supabaseSync) {
-        const regRes = await window.supabaseSync.signUp(email, password, {
-          name,
-          role: 'Resident',
-          zone,
-          address,
-          phone
-        });
-        if (regRes.success && regRes.user) {
-          authId = regRes.user.id;
-        } else if (!regRes.success && regRes.error && (regRes.error.toLowerCase().includes('already registered') || regRes.error.toLowerCase().includes('user already exists'))) {
-          if (regSubmitBtn) {
-            regSubmitBtn.disabled = false;
-            regSubmitBtn.innerHTML = originalRegText;
-          }
-          showAuthError('An account with this email is already registered. Please sign in instead.');
-          return;
+      // 1. Check if email already exists locally or in Supabase public.users table
+      const localExists = (store.data.users || []).some(u => (u.email || '').toLowerCase() === email.toLowerCase());
+      let cloudExists = false;
+      if (!localExists && window.supabaseSync) {
+        cloudExists = await window.supabaseSync.checkUserExists(email);
+      }
+      if (localExists || cloudExists) {
+        if (regSubmitBtn) {
+          regSubmitBtn.disabled = false;
+          regSubmitBtn.innerHTML = originalRegText;
         }
+        showAuthError('An account with this email is already registered. Please sign in instead.');
+        return;
       }
 
-      const newId = authId || ('USR-' + Date.now().toString().slice(-4));
+      const newId = 'USR-' + Date.now().toString().slice(-4);
       const newUser = {
         id: newId,
         name: name,
@@ -3315,7 +3281,6 @@ function initUserRegistrationForm() {
     store.saveState();
     if (window.supabaseSync) {
       window.supabaseSync.pushUser(userRecord);
-      window.supabaseSync.signUp(email, password, { name, role, zone, address, phone }).catch(() => {});
       if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
     form.reset();

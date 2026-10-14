@@ -2,9 +2,14 @@
 -- EcoPulse Municipal Waste Management & Recycling System
 -- Complete PostgreSQL Backend Schema for Supabase
 -- =============================================================================
--- Clean up any broken legacy auth triggers that cause GoTrue 500 errors on sign-in
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- Clean up all triggers/functions that synced accounts to Supabase Auth tab (auth.users)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
 DROP FUNCTION IF EXISTS public.handle_new_auth_user() CASCADE;
+
+-- Clear out any existing accounts from Supabase Authentication tab (auth.users)
+-- All accounts are now stored exclusively in the dedicated database table public.users
+DELETE FROM auth.identities;
+DELETE FROM auth.users;
 
 -- This script is 100% idempotent:
 -- 1. Creates all 9 tables if they do not exist.
@@ -424,16 +429,17 @@ ON CONFLICT (id) DO UPDATE SET
   assignment = EXCLUDED.assignment,
   status = EXCLUDED.status;
 
--- 4. Default System Users
-INSERT INTO public.users (id, name, email, phone, role, account_type, address, zone, eco_points, total_recycled_kg, pickups_completed, status)
+-- 4. Default System Users (Stored in database public.users table - completely separate from Supabase Auth tab)
+INSERT INTO public.users (id, name, email, password, phone, role, account_type, address, zone, eco_points, total_recycled_kg, pickups_completed, status)
 VALUES
-  ('USR-101', 'Alex Mercer', 'resident@ecopulse.org', '+94 77 234 9811', 'Resident', 'Residential Account', '12 Galle Road, Colombo 03', 'Colombo Fort', 1240, 84.5, 14, 'Active'),
-  ('USR-201', 'Kasun Wickramasinghe', 'leader@ecopulse.org', '+94 77 123 4567', 'Crew Leader', 'Municipal Crew Leader', 'Station 4 Depot, Colombo Fort', 'Colombo Fort', 0, 0, 0, 'Active'),
-  ('USR-301', 'Sunil Perera', 'manager@ecopulse.org', '+94 11 254 9988', 'Manager', 'Center Manager', 'GreenPoly Processing Hub, North', 'Colombo Fort', 0, 0, 0, 'Active'),
-  ('USR-401', 'Chief Elena Rostova', 'admin@ecopulse.org', '+94 11 900 1000', 'Admin', 'Municipal Administrator', 'City Hall Operations Center', 'Colombo Fort', 0, 0, 0, 'Active')
+  ('USR-401', 'Chief Elena Rostova', 'admin@ecopulse.org', 'Admin@1234', '+94 11 900 1000', 'Admin', 'Municipal Administrator', 'City Hall Operations Center', 'Colombo Fort', 0, 0, 0, 'Active'),
+  ('USR-301', 'Sunil Perera', 'manager@ecopulse.org', 'Manager@1234', '+94 11 254 9988', 'Manager', 'Center Manager', 'GreenPoly Processing Hub, North', 'Colombo Fort', 0, 0, 0, 'Active'),
+  ('USR-201', 'Kasun Wickramasinghe', 'leader@ecopulse.org', 'Leader@1234', '+94 77 123 4567', 'Crew Leader', 'Municipal Crew Leader', 'Station 4 Depot, Colombo Fort', 'Colombo Fort', 0, 0, 0, 'Active'),
+  ('USR-101', 'Alex Mercer', 'resident@ecopulse.org', 'Resident@1234', '+94 77 234 9811', 'Resident', 'Residential Account', '12 Galle Road, Colombo 03', 'Colombo Fort', 1240, 84.5, 14, 'Active')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   email = EXCLUDED.email,
+  password = EXCLUDED.password,
   phone = EXCLUDED.phone,
   role = EXCLUDED.role,
   account_type = EXCLUDED.account_type,
@@ -480,256 +486,9 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- =============================================================================
--- 10. SUPABASE AUTHENTICATION INTEGRATION & SEED USERS (auth.users)
+-- 10. DATABASE INDEXES FOR DIRECT TABLE AUTHENTICATION
 -- =============================================================================
--- Enables pgcrypto for password hashing
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
-
--- Trigger function to automatically create or update public.users whenever
--- a user is created in Supabase Auth (via Dashboard "Add user" or API signup)
-CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_role TEXT;
-  v_name TEXT;
-  v_account_type TEXT;
-  v_zone TEXT;
-  v_phone TEXT;
-BEGIN
-  -- 1. Determine role
-  IF NEW.raw_user_meta_data->>'role' IS NOT NULL AND NEW.raw_user_meta_data->>'role' <> '' THEN
-    v_role := NEW.raw_user_meta_data->>'role';
-  ELSIF NEW.email ILIKE '%admin%' THEN
-    v_role := 'Admin';
-  ELSIF NEW.email ILIKE '%manager%' THEN
-    v_role := 'Manager';
-  ELSIF NEW.email ILIKE '%leader%' THEN
-    v_role := 'Crew Leader';
-  ELSE
-    v_role := 'Resident';
-  END IF;
-
-  -- 2. Determine display name
-  IF NEW.raw_user_meta_data->>'name' IS NOT NULL AND NEW.raw_user_meta_data->>'name' <> '' THEN
-    v_name := NEW.raw_user_meta_data->>'name';
-  ELSIF NEW.email = 'admin@ecopulse.org' THEN
-    v_name := 'Chief Elena Rostova';
-  ELSIF NEW.email = 'manager@ecopulse.org' THEN
-    v_name := 'Sunil Perera';
-  ELSIF NEW.email = 'leader@ecopulse.org' THEN
-    v_name := 'Kasun Wickramasinghe';
-  ELSIF NEW.email = 'resident@ecopulse.org' THEN
-    v_name := 'Alex Mercer';
-  ELSE
-    v_name := initcap(split_part(NEW.email, '@', 1));
-  END IF;
-
-  -- 3. Determine zone
-  v_zone := COALESCE(NEW.raw_user_meta_data->>'zone', 'Colombo Fort');
-
-  -- 4. Determine phone
-  IF NEW.raw_user_meta_data->>'phone' IS NOT NULL AND NEW.raw_user_meta_data->>'phone' <> '' THEN
-    v_phone := NEW.raw_user_meta_data->>'phone';
-  ELSIF NEW.email = 'admin@ecopulse.org' THEN
-    v_phone := '+94 11 900 1000';
-  ELSIF NEW.email = 'manager@ecopulse.org' THEN
-    v_phone := '+94 11 254 9988';
-  ELSIF NEW.email = 'leader@ecopulse.org' THEN
-    v_phone := '+94 77 123 4567';
-  ELSIF NEW.email = 'resident@ecopulse.org' THEN
-    v_phone := '+94 77 234 9811';
-  ELSE
-    v_phone := '+94 77 123 4567';
-  END IF;
-
-  -- 5. Determine account type
-  IF v_role = 'Admin' THEN
-    v_account_type := 'Municipal Admin';
-  ELSIF v_role = 'Manager' THEN
-    v_account_type := 'Center Manager';
-  ELSIF v_role = 'Crew Leader' THEN
-    v_account_type := 'Municipal Crew Leader';
-  ELSE
-    v_account_type := 'Residential Account';
-  END IF;
-
-  -- 6. Upsert into public.users (check by email first to prevent foreign key & unique key conflicts)
-  IF EXISTS (SELECT 1 FROM public.users WHERE lower(email) = lower(NEW.email)) THEN
-    UPDATE public.users
-    SET
-      name = COALESCE(v_name, public.users.name),
-      role = COALESCE(v_role, public.users.role),
-      account_type = COALESCE(v_account_type, public.users.account_type),
-      phone = COALESCE(v_phone, public.users.phone),
-      zone = COALESCE(v_zone, public.users.zone)
-    WHERE lower(email) = lower(NEW.email);
-  ELSE
-    INSERT INTO public.users (
-      id,
-      name,
-      email,
-      phone,
-      role,
-      account_type,
-      address,
-      zone,
-      status,
-      registered_on,
-      created_at
-    )
-    VALUES (
-      NEW.id::text,
-      v_name,
-      NEW.email,
-      v_phone,
-      v_role,
-      v_account_type,
-      COALESCE(NEW.raw_user_meta_data->>'address', 'Curbside'),
-      v_zone,
-      'Active',
-      CURRENT_DATE,
-      COALESCE(NEW.created_at, now())
-    );
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Re-create the trigger on auth.users
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT OR UPDATE ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
-
--- Seed Default Municipal Accounts directly into auth.users (Supabase Authentication)
-DO $$
-DECLARE
-  v_uid uuid;
-  u_record RECORD;
-BEGIN
-  -- Set search_path so crypt and gen_salt resolve in extensions or public
-  PERFORM set_config('search_path', current_setting('search_path') || ', extensions', true);
-
-  FOR u_record IN (
-    SELECT * FROM (VALUES
-      ('admin@ecopulse.org', 'Admin@1234', 'Chief Elena Rostova', 'Admin', '+94 11 900 1000', 'Colombo Fort', 'City Hall Operations Center', 'Municipal Admin'),
-      ('manager@ecopulse.org', 'Manager@1234', 'Sunil Perera', 'Manager', '+94 11 254 9988', 'Colombo Fort', 'GreenPoly Processing Hub, North', 'Center Manager'),
-      ('leader@ecopulse.org', 'Leader@1234', 'Kasun Wickramasinghe', 'Crew Leader', '+94 77 123 4567', 'Colombo Fort', 'Station 4 Depot, Colombo Fort', 'Municipal Crew Leader'),
-      ('resident@ecopulse.org', 'Resident@1234', 'Alex Mercer', 'Resident', '+94 77 234 9811', 'Colombo Fort', '12 Galle Road, Colombo 03', 'Residential Account')
-    ) AS t(email, raw_password, name, role, phone, zone, address, account_type)
-  )
-  LOOP
-    SELECT id INTO v_uid FROM auth.users WHERE email = u_record.email;
-
-    IF v_uid IS NULL THEN
-      v_uid := gen_random_uuid();
-
-      INSERT INTO auth.users (
-        instance_id,
-        id,
-        aud,
-        role,
-        email,
-        encrypted_password,
-        email_confirmed_at,
-        raw_app_meta_data,
-        raw_user_meta_data,
-        created_at,
-        updated_at,
-        confirmation_token,
-        recovery_token
-      )
-      VALUES (
-        '00000000-0000-0000-0000-000000000000',
-        v_uid,
-        'authenticated',
-        'authenticated',
-        u_record.email,
-        crypt(u_record.raw_password, gen_salt('bf')),
-        now(),
-        '{"provider":"email","providers":["email"]}'::jsonb,
-        json_build_object('name', u_record.name, 'role', u_record.role, 'phone', u_record.phone, 'zone', u_record.zone, 'address', u_record.address)::jsonb,
-        now(),
-        now(),
-        '',
-        ''
-      );
-
-      BEGIN
-        INSERT INTO auth.identities (
-          id,
-          user_id,
-          identity_data,
-          provider,
-          last_sign_in_at,
-          created_at,
-          updated_at
-        )
-        VALUES (
-          v_uid::text,
-          v_uid,
-          json_build_object('sub', v_uid::text, 'email', u_record.email)::jsonb,
-          'email',
-          now(),
-          now(),
-          now()
-        );
-      EXCEPTION WHEN OTHERS THEN
-        NULL;
-      END;
-
-    ELSE
-      -- Update password and metadata if existing
-      UPDATE auth.users
-      SET
-        encrypted_password = crypt(u_record.raw_password, gen_salt('bf')),
-        raw_user_meta_data = json_build_object('name', u_record.name, 'role', u_record.role, 'phone', u_record.phone, 'zone', u_record.zone, 'address', u_record.address)::jsonb,
-        email_confirmed_at = COALESCE(email_confirmed_at, now()),
-        updated_at = now()
-      WHERE id = v_uid;
-    END IF;
-
-    -- Also ensure public.users has matching record without touching id
-    IF EXISTS (SELECT 1 FROM public.users WHERE lower(email) = lower(u_record.email)) THEN
-      UPDATE public.users
-      SET
-        name = u_record.name,
-        role = u_record.role,
-        account_type = u_record.account_type,
-        phone = u_record.phone,
-        address = u_record.address,
-        zone = u_record.zone
-      WHERE lower(email) = lower(u_record.email);
-    ELSE
-      INSERT INTO public.users (
-        id,
-        name,
-        email,
-        phone,
-        role,
-        account_type,
-        address,
-        zone,
-        status,
-        registered_on,
-        created_at
-      )
-      VALUES (
-        v_uid::text,
-        u_record.name,
-        u_record.email,
-        u_record.phone,
-        u_record.role,
-        u_record.account_type,
-        u_record.address,
-        u_record.zone,
-        'Active',
-        CURRENT_DATE,
-        now()
-      );
-    END IF;
-
-  END LOOP;
-END $$;
+-- All accounts are stored exclusively in public.users (no data is sent to auth.users).
+-- Unique index on email ensures fast and safe lookups for direct table login.
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_idx ON public.users (lower(email));
 

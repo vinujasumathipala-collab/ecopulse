@@ -97,9 +97,10 @@ class SupabaseSyncService {
       id: u.id,
       name: u.name,
       email: u.email,
+      password: u.password || null,
       phone: u.phone,
       role: dbRole,
-      account_type: u.accountType || 'Residential Account',
+      account_type: u.accountType || (dbRole === 'Admin' ? 'Municipal Administrator' : dbRole === 'Manager' ? 'Center Manager' : dbRole === 'Crew Leader' ? 'Municipal Crew Leader' : 'Residential Account'),
       address: u.address || 'Curbside',
       zone: u.zone || 'Colombo Fort',
       eco_points: u.ecoPoints || 0,
@@ -536,79 +537,66 @@ class SupabaseSyncService {
   }
 
   // ---------------------------------------------------------------------------
-  // Supabase Authentication (auth.users)
+  // Dedicated Database Table Authentication (public.users)
+  // No accounts are sent to Supabase Auth (auth.users tab).
+  // Accounts are stored directly in public.users and access is granted by account_type / role.
   // ---------------------------------------------------------------------------
-  async signInWithPassword(email, password) {
+  async authenticateUser(email, password) {
     try {
       const cleanEmail = (email || '').trim().toLowerCase();
-      const res = await fetch(`${this.url}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: {
-          'apikey': this.key,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: cleanEmail, password: password })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return {
-          success: false,
-          error: data.error_description || data.msg || data.message || 'Invalid login credentials. Please check your email and password.'
-        };
+      const users = await this.fetchTable('users', `email=ilike.${encodeURIComponent(cleanEmail)}&limit=1`);
+      if (!users || users.length === 0) {
+        return { success: false, error: 'No account registered with this email address.' };
+      }
+      const dbUser = users[0];
+      if (dbUser.password && dbUser.password !== password) {
+        return { success: false, error: 'Invalid password. Please check your credentials and try again.' };
       }
       return {
         success: true,
-        user: data.user,
-        session: data,
-        accessToken: data.access_token
+        user: this.mapUserFromDb(dbUser)
       };
     } catch (err) {
-      console.warn('Supabase Auth error:', err);
-      return { success: false, error: err.message || 'Network error during authentication.' };
+      console.warn('Database auth error:', err);
+      return { success: false, error: 'Database authentication failed.' };
     }
+  }
+
+  async checkUserExists(email) {
+    try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const users = await this.fetchTable('users', `email=ilike.${encodeURIComponent(cleanEmail)}&select=id,email&limit=1`);
+      return Boolean(users && users.length > 0);
+    } catch (err) {
+      return false;
+    }
+  }
+
+  // Safe backward-compatible aliases (ensures zero requests go to auth.users)
+  async signInWithPassword(email, password) {
+    return await this.authenticateUser(email, password);
   }
 
   async signUp(email, password, userData = {}) {
-    try {
-      const cleanEmail = (email || '').trim().toLowerCase();
-      const res = await fetch(`${this.url}/auth/v1/signup`, {
-        method: 'POST',
-        headers: {
-          'apikey': this.key,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: cleanEmail,
-          password: password,
-          data: userData
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return {
-          success: false,
-          error: data.error_description || data.msg || data.message || 'Account registration failed.'
-        };
-      }
-      return {
-        success: true,
-        user: data.user || data,
-        session: data.session
-      };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    // Inserts directly into public.users table - completely bypasses Supabase Auth tab
+    const newUser = {
+      id: userData.id || ('USR-' + Date.now().toString().slice(-4)),
+      name: userData.name || email.split('@')[0],
+      email: email,
+      password: password,
+      role: userData.role || 'Resident',
+      accountType: userData.accountType || (userData.role === 'Admin' ? 'Municipal Administrator' : userData.role === 'Manager' ? 'Center Manager' : userData.role === 'Crew Leader' ? 'Municipal Crew Leader' : 'Residential Account'),
+      zone: userData.zone || 'Colombo Fort',
+      address: userData.address || 'Curbside',
+      phone: userData.phone || null,
+      status: 'Active'
+    };
+    const res = await this.pushUser(newUser);
+    return { success: Boolean(res), user: newUser };
   }
 
   async signOut() {
-    try {
-      await fetch(`${this.url}/auth/v1/logout`, {
-        method: 'POST',
-        headers: this.headers
-      });
-    } catch (err) {
-      // ignore
-    }
+    return { success: true };
   }
 
   // Update visual badge in navbar
