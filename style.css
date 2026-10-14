@@ -3632,5 +3632,29 @@ body.theme-dark .segregation-zone-network-card {
   }
 }
 
+/* ==========================================================================
+   RESIDENT / CITIZEN USER - FUNCTION 3 TAB RESTRICTIONS
+   For resident users, only Segregation Guidance & Categories is available.
+   All operational tabs, subpanes, and action buttons are strictly hidden.
+   ========================================================================== */
+body.role-user #f3SubtabBar,
+body.role-user .f3-privileged-only,
+body.role-user .f3-admin-tab,
+body.role-user [data-f3sub="recycling-batches"],
+body.role-user [data-f3sub="facilities"],
+body.role-user [data-f3sub="recycling-history"],
+body.role-user #f3-recycling-batches,
+body.role-user #f3-facilities,
+body.role-user #f3-recycling-history,
+body.role-user #f3PaneActions,
+body.role-user #openFacilityModalBtn,
+body.role-user #openIntakeModalBtn,
+body.role-user #openAddSegItemBtn,
+body.role-user #quickAddBatchBtn,
+body.role-user #qaDailyJobs,
+body.role-user #qaRecycleIntake {
+  display: none !important;
+}
+
 
 

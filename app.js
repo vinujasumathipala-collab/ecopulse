@@ -988,21 +988,29 @@ function setupSubtabs(attrName, paneClass) {
 // -----------------------------------------------------------------------------
 // Role Normalization & Centralized RBAC Engine
 // -----------------------------------------------------------------------------
-function normalizeRole(role) {
-  if (!role) return 'user';
-  const r = role.toLowerCase().trim();
-  if (r.includes('admin')) return 'admin';
-  if (r.includes('manager')) return 'manager';
-  if (r.includes('crew') || r.includes('leader') || r.includes('driver')) return 'crew_leader';
+function normalizeRole(role, accountType) {
+  if (role && typeof role === 'object') {
+    accountType = role.accountType || role.account_type;
+    role = role.role;
+  }
+  const r = (role || '').toLowerCase().trim();
+  const acc = (accountType || '').toLowerCase().trim();
+  if (r.includes('admin') || acc.includes('admin')) return 'admin';
+  if (r.includes('manager') || acc.includes('manager')) return 'manager';
+  if (r.includes('crew') || r.includes('leader') || r.includes('driver') || acc.includes('crew') || acc.includes('operations')) return 'crew_leader';
   return 'user';
 }
 window.normalizeRole = normalizeRole;
 
 function applyRolePermissions(user) {
   if (!user) return;
-  const roleKey = normalizeRole(user.role);
+  const roleKey = normalizeRole(user.role, user.accountType);
   store.data.activeRole = roleKey;
   store.data.currentUser = user;
+
+  // Add role class to body for fail-safe CSS enforcement
+  document.body.classList.remove('role-admin', 'role-manager', 'role-crew_leader', 'role-user');
+  document.body.classList.add(`role-${roleKey}`);
 
   // Sync userProfile with logged in user
   store.data.userProfile = {
@@ -1143,16 +1151,33 @@ function applyRolePermissions(user) {
   // 1. Recyclable Batches & Allocation
   // 2. Recycling Centres Directory
   // 3. Processing Yields & History
-  document.querySelectorAll('[data-f3sub="recycling-batches"], [data-f3sub="facilities"], [data-f3sub="recycling-history"], .f3-admin-tab').forEach(tab => {
+  document.querySelectorAll('[data-f3sub="recycling-batches"], [data-f3sub="facilities"], [data-f3sub="recycling-history"], .f3-admin-tab, .f3-privileged-only').forEach(tab => {
     tab.style.display = isPrivilegedRecycler ? '' : 'none';
   });
 
-  // Ensure standard users land exclusively on the Segregation Guidance tab
+  // Function 3 Subtab bar: for resident users, hide the subtab bar so only Segregation Guidance & Categories is available
+  const f3Subbar = document.getElementById('f3SubtabBar');
+  if (f3Subbar) {
+    f3Subbar.style.display = isPrivilegedRecycler ? 'flex' : 'none';
+  }
+
+  const f3BatchesPane = document.getElementById('f3-recycling-batches');
+  const f3FacilitiesPane = document.getElementById('f3-facilities');
+  const f3HistoryPane = document.getElementById('f3-recycling-history');
+  const f3GuidePane = document.getElementById('f3-segregation-guide');
   const f3GuideTab = document.querySelector('[data-f3sub="segregation-guide"]');
-  if (!isPrivilegedRecycler) {
-    if (f3GuideTab && (!f3GuideTab.classList.contains('active') || document.querySelector('.f3-subpane.active:not(#f3-segregation-guide)'))) {
-      f3GuideTab.click();
-    }
+
+  if (isPrivilegedRecycler) {
+    if (f3BatchesPane) f3BatchesPane.style.display = '';
+    if (f3FacilitiesPane) f3FacilitiesPane.style.display = '';
+    if (f3HistoryPane) f3HistoryPane.style.display = '';
+  } else {
+    // Resident users strictly only see the Segregation Guidance & Categories view
+    if (f3BatchesPane) { f3BatchesPane.style.display = 'none'; f3BatchesPane.classList.remove('active'); }
+    if (f3FacilitiesPane) { f3FacilitiesPane.style.display = 'none'; f3FacilitiesPane.classList.remove('active'); }
+    if (f3HistoryPane) { f3HistoryPane.style.display = 'none'; f3HistoryPane.classList.remove('active'); }
+    if (f3GuidePane) { f3GuidePane.style.display = 'block'; f3GuidePane.classList.add('active'); }
+    if (f3GuideTab) f3GuideTab.classList.add('active');
   }
 
   // Dashboard quick actions
@@ -4399,6 +4424,29 @@ function renderFunction3() {
   renderRecyclableBatches();
   renderFacilities();
   renderRecyclingHistory();
+
+  const roleKey = normalizeRole(store.data.currentUser?.role, store.data.currentUser?.accountType);
+  if (roleKey === 'user') {
+    const f3Subbar = document.getElementById('f3SubtabBar');
+    if (f3Subbar) f3Subbar.style.display = 'none';
+    const f3Actions = document.getElementById('f3PaneActions');
+    if (f3Actions) f3Actions.style.display = 'none';
+    document.querySelectorAll('[data-f3sub="recycling-batches"], [data-f3sub="facilities"], [data-f3sub="recycling-history"], .f3-admin-tab, .f3-privileged-only').forEach(el => {
+      el.style.display = 'none';
+    });
+    const parentPane = document.getElementById('tab-function3');
+    if (parentPane) {
+      parentPane.querySelectorAll('.f3-subpane:not(#f3-segregation-guide)').forEach(p => {
+        p.classList.remove('active');
+        p.style.display = 'none';
+      });
+      const g = document.getElementById('f3-segregation-guide');
+      if (g) {
+        g.classList.add('active');
+        g.style.display = 'block';
+      }
+    }
+  }
 }
 
 function renderWasteCategoriesTable() {
