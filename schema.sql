@@ -2,6 +2,10 @@
 -- EcoPulse Municipal Waste Management & Recycling System
 -- Complete PostgreSQL Backend Schema for Supabase
 -- =============================================================================
+-- Clean up any broken legacy auth triggers that cause GoTrue 500 errors on sign-in
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_auth_user() CASCADE;
+
 -- This script is 100% idempotent:
 -- 1. Creates all 9 tables if they do not exist.
 -- 2. Uses ALTER TABLE ... ADD COLUMN IF NOT EXISTS to safely upgrade existing tables.
@@ -31,6 +35,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 
 -- Upgrade existing users table if columns are missing
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password TEXT;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'Resident';
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_type TEXT DEFAULT 'Residential Account';
@@ -42,6 +47,12 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS pickups_completed INTEGER DEFA
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active';
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS registered_on DATE DEFAULT CURRENT_DATE;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now());
+
+-- Seed default passwords for system demonstration accounts
+UPDATE public.users SET password = 'Admin@1234' WHERE lower(email) = 'admin@ecopulse.org' AND (password IS NULL OR password = '');
+UPDATE public.users SET password = 'Manager@1234' WHERE lower(email) = 'manager@ecopulse.org' AND (password IS NULL OR password = '');
+UPDATE public.users SET password = 'Leader@1234' WHERE lower(email) = 'leader@ecopulse.org' AND (password IS NULL OR password = '');
+UPDATE public.users SET password = 'Resident@1234' WHERE lower(email) = 'resident@ecopulse.org' AND (password IS NULL OR password = '');
 
 -- Drop any legacy CHECK constraints on users (e.g. users_role_check) that restrict valid municipal roles
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;

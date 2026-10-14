@@ -197,7 +197,7 @@
         <span>Report Issue</span>
       </button>
 
-      <button class="nav-action-btn secondary-action" id="navRegisterUserBtn" title="Register / Create New User Account" style="display:none;">
+      <button class="nav-action-btn secondary-action btn-admin-only-new-user" id="navRegisterUserBtn" title="Register / Create New User Account" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
         <span>+ New Account</span>
       </button>
@@ -460,7 +460,7 @@
             <p class="pane-subtitle">Manage user accounts, submit pickup requests with photos, track status in real-time, and view schedules.</p>
           </div>
           <div class="pane-actions">
-            <button class="btn btn-outline" id="f1NewUserBtn" title="Create New User Account" style="display:none;">
+            <button class="btn btn-outline btn-admin-only-new-user" id="f1NewUserBtn" title="Create New User Account" style="display:none;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
               <span>+ New Account</span>
             </button>
@@ -978,7 +978,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span>+ Lodge Complaint</span>
             </button>
-            <button class="btn btn-primary" id="f4NewUserBtn">
+            <button class="btn btn-primary btn-admin-only-new-user" id="f4NewUserBtn" style="display:none;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
               <span>+ Register User</span>
             </button>
@@ -1058,7 +1058,7 @@
                 <div class="table-search-box">
                   <input type="text" id="userAdminSearchInput" placeholder="Filter users by name, role or zone..." class="input-text">
                 </div>
-                <button class="btn btn-sm btn-primary" id="f4NewUserBtn" onclick="openModal('registerUserModal')" style="display:none;">+ Provision Account</button>
+                <button class="btn btn-sm btn-primary btn-admin-only-new-user" id="f4TableNewUserBtn" onclick="openModal('registerUserModal')" style="display:none;">+ Provision Account</button>
               </div>
             </div>
             <div class="card-body p-0">
@@ -1704,6 +1704,12 @@
         <div class="form-group">
           <label for="newUserAddress" class="form-label">Street / Curbside Address <span class="req">*</span></label>
           <input type="text" id="newUserAddress" class="form-input" placeholder="e.g. 45 Park Street, Colombo 02" required>
+        </div>
+
+        <div class="form-group">
+          <label for="newUserPassword" class="form-label">Account Password <span class="req">*</span></label>
+          <input type="password" id="newUserPassword" class="form-input" placeholder="Set login password (e.g. EcoPulse@123)" value="Welcome@1234" required>
+          <small class="form-hint" style="font-size:0.75rem; color:var(--text-muted);">The user can use this password to sign in at the portal.</small>
         </div>
 
         <div class="form-group">

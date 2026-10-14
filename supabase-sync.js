@@ -114,6 +114,7 @@ class SupabaseSyncService {
       id: r.id,
       name: r.name,
       email: r.email,
+      password: r.password || null,
       phone: r.phone,
       role: r.role,
       accountType: r.account_type,
@@ -388,7 +389,22 @@ class SupabaseSyncService {
 
         // Only populate if cloud has rows, otherwise upload initial local state
         if (usersData.length > 0) {
-          store.data.users = usersData.map(u => this.mapUserFromDb(u));
+          const oldUsers = store.data.users || [];
+          let storedCreds = {};
+          try {
+            storedCreds = JSON.parse(localStorage.getItem('ecopulse_user_creds') || '{}');
+          } catch(e) {}
+
+          store.data.users = usersData.map(u => {
+            const mapped = this.mapUserFromDb(u);
+            const prev = oldUsers.find(o => (o.email && o.email.toLowerCase() === (mapped.email || '').toLowerCase()) || o.id === mapped.id);
+            const defaultAcc = (typeof DEFAULT_SYSTEM_ACCOUNTS !== 'undefined' ? DEFAULT_SYSTEM_ACCOUNTS : []).find(d => d.email.toLowerCase() === (mapped.email || '').toLowerCase());
+            
+            // Retain password so cloud sync NEVER wipes out credentials
+            mapped.password = mapped.password || prev?.password || storedCreds[(mapped.email || '').toLowerCase()] || defaultAcc?.password || null;
+            return mapped;
+          });
+
           // If active user is present in cloud, update userProfile & currentUser from database
           if (store.data.currentUser) {
             const matchCurrent = store.data.users.find(u => u.id === store.data.currentUser.id || u.email === store.data.currentUser.email);

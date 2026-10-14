@@ -1026,22 +1026,12 @@ function applyRolePermissions(user) {
   }
 
   // 2. Account creation buttons visibility (Admin ONLY after login)
+  // Non-admin roles (Manager, Crew Leader, Citizen) have ALL account creation options hidden
   const isAdmin = (roleKey === 'admin');
 
-  const btnNavNewUser = document.getElementById('navRegisterUserBtn');
-  if (btnNavNewUser) {
-    btnNavNewUser.style.display = isAdmin ? 'inline-flex' : 'none';
-  }
-
-  const btnF1NewUser = document.getElementById('f1NewUserBtn');
-  if (btnF1NewUser) {
-    btnF1NewUser.style.display = isAdmin ? 'inline-flex' : 'none';
-  }
-
-  const btnF4NewUser = document.getElementById('f4NewUserBtn');
-  if (btnF4NewUser) {
-    btnF4NewUser.style.display = isAdmin ? 'inline-flex' : 'none';
-  }
+  document.querySelectorAll('.btn-admin-only-new-user, #navRegisterUserBtn, #f1NewUserBtn, #f4NewUserBtn, #f4TableNewUserBtn').forEach(btn => {
+    btn.style.display = isAdmin ? 'inline-flex' : 'none';
+  });
 
   // 3. Filter Sidebar Navigation according to role
   // Crew Leaders and Managers can access ALL functions (dashboard, function1, function2, function3, function4)
@@ -1282,25 +1272,94 @@ function initAuthSystem() {
       let authUser = null;
       let authErrorMsg = '';
 
-      // 1. Try Supabase Authentication directly (auth.users)
-      if (window.supabaseSync) {
-        const authRes = await window.supabaseSync.signInWithPassword(email, password);
-        if (authRes.success) {
-          authSuccess = true;
-          authUser = authRes.user;
-        } else {
-          authErrorMsg = authRes.error;
+      let storedCreds = {};
+      try {
+        storedCreds = JSON.parse(localStorage.getItem('ecopulse_user_creds') || '{}');
+      } catch(e) {}
+
+      const cleanEmail = email.toLowerCase();
+
+      // 1. Check if user is signing in with one of the predefined system accounts
+      const defaultMatch = DEFAULT_SYSTEM_ACCOUNTS.find(u =>
+        (u.email && u.email.toLowerCase() === cleanEmail) ||
+        (u.id && u.id.toLowerCase() === cleanEmail)
+      );
+
+      // Check if user account was created or exists in store
+      const storeUserMatch = (store.data.users || []).find(u =>
+        (u.email && u.email.toLowerCase() === cleanEmail) ||
+        (u.id && u.id.toLowerCase() === cleanEmail)
+      );
+
+      const expectedPassword = defaultMatch?.password || storeUserMatch?.password || storedCreds[cleanEmail];
+
+      if (defaultMatch) {
+        // Strict password check for default system accounts
+        if (password !== defaultMatch.password) {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+          }
+          showAuthError(`Invalid password for ${defaultMatch.name}. For demo testing, default password is: ${defaultMatch.password}`);
+          return;
         }
-      }
 
-      // 2. Fallback check for known demo system accounts with strict password verification
-      if (!authSuccess) {
-        const allUsers = [...(store.data.users || []), ...DEFAULT_SYSTEM_ACCOUNTS];
-        const localFound = allUsers.find(u => (u.email && u.email.toLowerCase() === email) || (u.id && u.id.toLowerCase() === email));
+        // Default credentials verified!
+        authSuccess = true;
+        authUser = storeUserMatch ? { ...defaultMatch, ...storeUserMatch } : { ...defaultMatch };
 
-        if (localFound && localFound.password && localFound.password === password) {
+        if (window.supabaseSync) {
+          window.supabaseSync.signInWithPassword(email, password).catch(() => {});
+        }
+      } else if (storeUserMatch || expectedPassword) {
+        // Account exists in user list or local credential vault
+        if (expectedPassword) {
+          if (password !== expectedPassword) {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalBtnText;
+            }
+            showAuthError('Invalid password. Please check your credentials and try again.');
+            return;
+          }
           authSuccess = true;
-          authUser = localFound;
+          authUser = storeUserMatch || { id: 'USR-' + Date.now().toString().slice(-4), email: cleanEmail, name: cleanEmail.split('@')[0], role: 'Resident' };
+
+          if (window.supabaseSync) {
+            window.supabaseSync.signInWithPassword(email, password).catch(() => {});
+          }
+        } else {
+          // If no local password is on record, MUST verify with Supabase Auth
+          let verified = false;
+          if (window.supabaseSync) {
+            const authRes = await window.supabaseSync.signInWithPassword(email, password);
+            if (authRes.success) {
+              verified = true;
+              authSuccess = true;
+              authUser = storeUserMatch || authRes.user;
+            } else {
+              authErrorMsg = authRes.error;
+            }
+          }
+          if (!verified) {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalBtnText;
+            }
+            showAuthError(authErrorMsg || 'Invalid login credentials. Please check your email and password.');
+            return;
+          }
+        }
+      } else {
+        // Standard user or Supabase Auth registered account
+        if (window.supabaseSync) {
+          const authRes = await window.supabaseSync.signInWithPassword(email, password);
+          if (authRes.success) {
+            authSuccess = true;
+            authUser = authRes.user;
+          } else {
+            authErrorMsg = authRes.error;
+          }
         }
       }
 
@@ -1316,10 +1375,11 @@ function initAuthSystem() {
 
       // 3. Resolve user profile and role from Supabase public.users or local store
       let profileUser = null;
-      const allUsers = [...(store.data.users || []), ...DEFAULT_SYSTEM_ACCOUNTS];
-      profileUser = allUsers.find(u => (u.email && u.email.toLowerCase() === email) || (u.id && u.id === authUser?.id));
-
-      if (!profileUser && authUser) {
+      if (defaultMatch) {
+        profileUser = authUser || defaultMatch;
+      } else if (storeUserMatch) {
+        profileUser = { ...storeUserMatch };
+      } else if (authUser) {
         const meta = authUser.user_metadata || {};
         profileUser = {
           id: authUser.id || ('USR-' + Date.now().toString().slice(-4)),
@@ -1387,12 +1447,12 @@ function initAuthSystem() {
         });
         if (regRes.success && regRes.user) {
           authId = regRes.user.id;
-        } else if (!regRes.success && regRes.error && !regRes.error.toLowerCase().includes('already registered')) {
+        } else if (!regRes.success && regRes.error && (regRes.error.toLowerCase().includes('already registered') || regRes.error.toLowerCase().includes('user already exists'))) {
           if (regSubmitBtn) {
             regSubmitBtn.disabled = false;
             regSubmitBtn.innerHTML = originalRegText;
           }
-          showAuthError(regRes.error);
+          showAuthError('An account with this email is already registered. Please sign in instead.');
           return;
         }
       }
@@ -1417,6 +1477,12 @@ function initAuthSystem() {
 
       if (!store.data.users) store.data.users = [];
       store.data.users.push(newUser);
+
+      try {
+        const creds = JSON.parse(localStorage.getItem('ecopulse_user_creds') || '{}');
+        creds[email.toLowerCase()] = password;
+        localStorage.setItem('ecopulse_user_creds', JSON.stringify(creds));
+      } catch(e) {}
 
       store.data.activityFeed.unshift({
         text: `New account registered: ${name} (${role}, ${zone}).`,
@@ -1788,17 +1854,16 @@ function initModals() {
     });
   }
 
-  const btnUser = document.getElementById('f4NewUserBtn');
-  if (btnUser) {
-    btnUser.addEventListener('click', () => {
+  document.querySelectorAll('.btn-admin-only-new-user, #navRegisterUserBtn, #f1NewUserBtn, #f4NewUserBtn, #f4TableNewUserBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
       const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
       if (activeRoleKey !== 'admin') {
-        showToast('Only Municipal Administrators can create accounts.', 'error');
+        showToast('Unauthorized: Only Municipal Administrators can create or provision accounts.', 'error');
         return;
       }
       openModal('registerUserModal');
     });
-  }
+  });
 
   const btnAddSeg = document.getElementById('openAddSegItemBtn');
   if (btnAddSeg) btnAddSeg.addEventListener('click', () => openModal('addSegregationItemModal'));
@@ -1808,30 +1873,6 @@ function initModals() {
 
   const btnTopProf = document.getElementById('userProfileBtn');
   if (btnTopProf) btnTopProf.addEventListener('click', openUserProfileModal);
-
-  const btnNavNewUser = document.getElementById('navRegisterUserBtn');
-  if (btnNavNewUser) {
-    btnNavNewUser.addEventListener('click', () => {
-      const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
-      if (activeRoleKey !== 'admin') {
-        showToast('Only Municipal Administrators can create accounts.', 'error');
-        return;
-      }
-      openModal('registerUserModal');
-    });
-  }
-
-  const btnF1NewUser = document.getElementById('f1NewUserBtn');
-  if (btnF1NewUser) {
-    btnF1NewUser.addEventListener('click', () => {
-      const activeRoleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
-      if (activeRoleKey !== 'admin') {
-        showToast('Only Municipal Administrators can create accounts.', 'error');
-        return;
-      }
-      openModal('registerUserModal');
-    });
-  }
 
   // Close buttons
   document.querySelectorAll('[data-close-modal]').forEach(btn => {
@@ -3188,12 +3229,14 @@ function initUserRegistrationForm() {
       return;
     }
     const phone = phoneValidation.formatted;
-    const addressInput = document.getElementById('newUserAddress');
-    const address = addressInput ? addressInput.value.trim() : `${zone} Curbside`;
-    const role = document.getElementById('newUserRole').value;
     const zone = document.getElementById('newUserZone').value;
+    const addressInput = document.getElementById('newUserAddress');
+    const address = addressInput && addressInput.value.trim() ? addressInput.value.trim() : `${zone} Curbside`;
+    const passwordInput = document.getElementById('newUserPassword');
+    const password = passwordInput && passwordInput.value ? passwordInput.value : 'Welcome@1234';
+    const role = document.getElementById('newUserRole').value;
     const setActiveCheckbox = document.getElementById('newUserSetActive');
-    const setActive = setActiveCheckbox ? setActiveCheckbox.checked : true;
+    const setActive = setActiveCheckbox ? setActiveCheckbox.checked : false;
 
     const newId = 'USR-' + (100 + store.data.users.length + 1);
 
@@ -3201,6 +3244,7 @@ function initUserRegistrationForm() {
       id: newId,
       name: name,
       email: email,
+      password: password,
       phone: phone,
       address: address,
       role: role,
@@ -3213,6 +3257,12 @@ function initUserRegistrationForm() {
     };
 
     store.data.users.push(userRecord);
+
+    try {
+      const creds = JSON.parse(localStorage.getItem('ecopulse_user_creds') || '{}');
+      creds[email.toLowerCase()] = password;
+      localStorage.setItem('ecopulse_user_creds', JSON.stringify(creds));
+    } catch(e) {}
 
     if (role === 'Crew Leader' || role === 'Manager' || role === 'Crew Driver') {
       if (!store.data.personnel) store.data.personnel = [];
@@ -3265,12 +3315,13 @@ function initUserRegistrationForm() {
     store.saveState();
     if (window.supabaseSync) {
       window.supabaseSync.pushUser(userRecord);
+      window.supabaseSync.signUp(email, password, { name, role, zone, address, phone }).catch(() => {});
       if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
     form.reset();
     closeModal('registerUserModal');
     renderAllViews();
-    showToast(`User account "${name}" created and set as active user!`, 'success');
+    showToast(`User account "${name}" (${role}) successfully created!`, 'success');
   });
 
   const searchInput = document.getElementById('userAdminSearchInput');
