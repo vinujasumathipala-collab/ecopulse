@@ -793,12 +793,12 @@
             <h1 class="pane-title">Waste Segregation & Recycling Management</h1>
             <p class="pane-subtitle">Interactive segregation guidance, material recovery facilities (MRFs), batch allocation, yields, and audit trails.</p>
           </div>
-          <div class="pane-actions f3-privileged-only" id="f3PaneActions" style="display:none;">
-            <button class="btn btn-secondary f3-privileged-only" id="openIntakeModalBtn" style="display:none;">
+          <div class="pane-actions f3-privileged-only" id="f3PaneActions">
+            <button class="btn btn-secondary f3-privileged-only" id="openIntakeModalBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
               <span>+ Record Recyclable Batch</span>
             </button>
-            <button class="btn btn-primary f3-privileged-only" id="openFacilityModalBtn" style="display:none;">
+            <button class="btn btn-primary f3-privileged-only" id="openFacilityModalBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
               <span>+ Register Recycling Centre</span>
             </button>
@@ -808,9 +808,9 @@
         <!-- Inner Subtabs for Function 3 -->
         <div class="subtab-bar" id="f3SubtabBar">
           <button class="subtab-btn active" data-f3sub="segregation-guide">Segregation Guidance & Categories</button>
-          <button class="subtab-btn f3-admin-tab f3-privileged-only" data-f3sub="recycling-batches" style="display:none;">Recyclable Batches & Allocation</button>
-          <button class="subtab-btn f3-admin-tab f3-privileged-only" data-f3sub="facilities" style="display:none;">Recycling Centres Directory</button>
-          <button class="subtab-btn f3-admin-tab f3-privileged-only" data-f3sub="recycling-history" style="display:none;">Processing Yields & History</button>
+          <button class="subtab-btn f3-admin-tab f3-privileged-only" data-f3sub="recycling-batches">Recyclable Batches & Allocation</button>
+          <button class="subtab-btn f3-admin-tab f3-privileged-only" data-f3sub="facilities">Recycling Centres Directory</button>
+          <button class="subtab-btn f3-admin-tab f3-privileged-only" data-f3sub="recycling-history">Processing Yields & History</button>
         </div>
 
         <!-- F3 Subtab 1: Interactive Segregation Guide & Categories -->
@@ -875,7 +875,7 @@
         </div>
 
         <!-- F3 Subtab 2: Recyclable Batches & Center Allocation -->
-        <div class="f3-subpane f3-privileged-only" id="f3-recycling-batches" style="display:none;">
+        <div class="f3-subpane f3-privileged-only" id="f3-recycling-batches">
           <div class="section-top-row">
             <div>
               <h2 class="section-title">Collected Recyclable Batches (In Yard)</h2>
@@ -890,7 +890,7 @@
         </div>
 
         <!-- F3 Subtab 3: Recycling Centres Directory (1 per Zone) -->
-        <div class="f3-subpane f3-privileged-only" id="f3-facilities" style="display:none;">
+        <div class="f3-subpane f3-privileged-only" id="f3-facilities">
           <div class="section-top-row">
             <div>
               <h2 class="section-title">Certified Municipal Zone Segregation & Recycling Centres</h2>
@@ -916,7 +916,7 @@
         </div>
 
         <!-- F3 Subtab 4: Recycling Yields & Audit History -->
-        <div class="f3-subpane f3-privileged-only" id="f3-recycling-history" style="display:none;">
+        <div class="f3-subpane f3-privileged-only" id="f3-recycling-history">
           <div class="card">
             <div class="card-header">
               <div>

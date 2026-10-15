@@ -962,16 +962,22 @@ function setupSubtabs(attrName, paneClass) {
       }
 
       const parentSubbar = btn.closest('.subtab-bar');
-      parentSubbar.querySelectorAll(`[${attrName}]`).forEach(b => b.classList.remove('active'));
+      if (parentSubbar) {
+        parentSubbar.querySelectorAll(`[${attrName}]`).forEach(b => b.classList.remove('active'));
+      }
       btn.classList.add('active');
 
       const parentPane = btn.closest('.tab-pane');
-      parentPane.querySelectorAll(`.${paneClass}`).forEach(pane => {
-        pane.classList.remove('active');
-      });
+      if (parentPane) {
+        parentPane.querySelectorAll(`.${paneClass}`).forEach(pane => {
+          pane.classList.remove('active');
+          pane.style.removeProperty('display');
+        });
+      }
       const targetElem = document.getElementById(targetSubId) || document.getElementById(`${paneClass.split('-')[0]}-${targetSubId}`);
       if (targetElem) {
         targetElem.classList.add('active');
+        targetElem.style.removeProperty('display');
       }
 
       if (attrName === 'data-f2sub') {
@@ -980,6 +986,13 @@ function setupSubtabs(attrName, paneClass) {
         if (targetSubId === 'crew-roster') renderCrewRoster();
         if (targetSubId === 'personnel-roster') renderPersonnelRoster();
         if (targetSubId === 'schedules-planner') renderMasterSchedules();
+      }
+
+      if (attrName === 'data-f3sub') {
+        if (targetSubId === 'recycling-batches') renderRecyclableBatches();
+        if (targetSubId === 'facilities') renderFacilities();
+        if (targetSubId === 'recycling-history') renderRecyclingHistory();
+        if (targetSubId === 'segregation-guide') filterSegregationGuide();
       }
     });
   });
@@ -1147,15 +1160,11 @@ function applyRolePermissions(user) {
   const btnQuickBatch = document.getElementById('quickAddBatchBtn');
   if (btnQuickBatch) btnQuickBatch.style.display = isPrivilegedRecycler ? 'inline-flex' : 'none';
 
-  // Function 3 Subtabs: Standard users / residents must NOT see operational tabs:
-  // 1. Recyclable Batches & Allocation
-  // 2. Recycling Centres Directory
-  // 3. Processing Yields & History
-  document.querySelectorAll('[data-f3sub="recycling-batches"], [data-f3sub="facilities"], [data-f3sub="recycling-history"], .f3-admin-tab, .f3-privileged-only').forEach(tab => {
+  // Function 3 Subtabs: Standard users / residents must NOT see operational tabs
+  document.querySelectorAll('[data-f3sub="recycling-batches"], [data-f3sub="facilities"], [data-f3sub="recycling-history"], .f3-admin-tab').forEach(tab => {
     tab.style.display = isPrivilegedRecycler ? '' : 'none';
   });
 
-  // Function 3 Subtab bar: for resident users, hide the subtab bar so only Segregation Guidance & Categories is available
   const f3Subbar = document.getElementById('f3SubtabBar');
   if (f3Subbar) {
     f3Subbar.style.display = isPrivilegedRecycler ? 'flex' : 'none';
@@ -1167,17 +1176,23 @@ function applyRolePermissions(user) {
   const f3GuidePane = document.getElementById('f3-segregation-guide');
   const f3GuideTab = document.querySelector('[data-f3sub="segregation-guide"]');
 
-  if (isPrivilegedRecycler) {
-    if (f3BatchesPane) f3BatchesPane.style.display = '';
-    if (f3FacilitiesPane) f3FacilitiesPane.style.display = '';
-    if (f3HistoryPane) f3HistoryPane.style.display = '';
-  } else {
+  // Clear all inline display overrides on subpanes so CSS .f3-subpane (.active) governs visibility cleanly
+  if (f3BatchesPane) f3BatchesPane.style.removeProperty('display');
+  if (f3FacilitiesPane) f3FacilitiesPane.style.removeProperty('display');
+  if (f3HistoryPane) f3HistoryPane.style.removeProperty('display');
+  if (f3GuidePane) f3GuidePane.style.removeProperty('display');
+
+  if (!isPrivilegedRecycler) {
     // Resident users strictly only see the Segregation Guidance & Categories view
-    if (f3BatchesPane) { f3BatchesPane.style.display = 'none'; f3BatchesPane.classList.remove('active'); }
-    if (f3FacilitiesPane) { f3FacilitiesPane.style.display = 'none'; f3FacilitiesPane.classList.remove('active'); }
-    if (f3HistoryPane) { f3HistoryPane.style.display = 'none'; f3HistoryPane.classList.remove('active'); }
-    if (f3GuidePane) { f3GuidePane.style.display = 'block'; f3GuidePane.classList.add('active'); }
-    if (f3GuideTab) f3GuideTab.classList.add('active');
+    if (f3BatchesPane) f3BatchesPane.classList.remove('active');
+    if (f3FacilitiesPane) f3FacilitiesPane.classList.remove('active');
+    if (f3HistoryPane) f3HistoryPane.classList.remove('active');
+    if (f3GuidePane) f3GuidePane.classList.add('active');
+    if (f3GuideTab) {
+      const parentSubbar = f3GuideTab.closest('.subtab-bar');
+      if (parentSubbar) parentSubbar.querySelectorAll('[data-f3sub]').forEach(b => b.classList.remove('active'));
+      f3GuideTab.classList.add('active');
+    }
   }
 
   // Dashboard quick actions
@@ -4427,23 +4442,16 @@ function renderFunction3() {
 
   const roleKey = normalizeRole(store.data.currentUser?.role, store.data.currentUser?.accountType);
   if (roleKey === 'user') {
-    const f3Subbar = document.getElementById('f3SubtabBar');
-    if (f3Subbar) f3Subbar.style.display = 'none';
-    const f3Actions = document.getElementById('f3PaneActions');
-    if (f3Actions) f3Actions.style.display = 'none';
-    document.querySelectorAll('[data-f3sub="recycling-batches"], [data-f3sub="facilities"], [data-f3sub="recycling-history"], .f3-admin-tab, .f3-privileged-only').forEach(el => {
-      el.style.display = 'none';
-    });
     const parentPane = document.getElementById('tab-function3');
     if (parentPane) {
       parentPane.querySelectorAll('.f3-subpane:not(#f3-segregation-guide)').forEach(p => {
         p.classList.remove('active');
-        p.style.display = 'none';
+        p.style.removeProperty('display');
       });
       const g = document.getElementById('f3-segregation-guide');
       if (g) {
         g.classList.add('active');
-        g.style.display = 'block';
+        g.style.removeProperty('display');
       }
     }
   }
