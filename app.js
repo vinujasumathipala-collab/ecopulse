@@ -339,42 +339,7 @@ const SAMPLE_DATA_TEMPLATE = {
     totalRecycledKg: 84.5,
     pickupsCompleted: 14
   },
-  requests: [
-    {
-      id: 'REQ-4091',
-      residentId: 'RES-8821',
-      residentName: 'Alex Mercer',
-      address: '12 Galle Road, Colombo 03',
-      zone: 'Colombo Fort',
-      category: 'Plastic Recyclable',
-      estimatedKg: 14,
-      actualKg: 15.2,
-      date: '2026-09-04',
-      timeSlot: 'Morning (08:00 - 12:00)',
-      status: 'Collected',
-      assignedCrew: 'Crew #1 (Alpha Hauler)',
-      notes: 'Clean rinsed HDPE and PET bottles tied in blue clear bags.',
-      image: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=300&auto=format&fit=crop&q=80',
-      pointsAwarded: 150
-    },
-    {
-      id: 'REQ-4092',
-      residentId: 'RES-8821',
-      residentName: 'Alex Mercer',
-      address: '88 Duplication Road, Kollupitiya',
-      zone: 'Kollupitiya',
-      category: 'Paper & Cardboard',
-      estimatedKg: 20,
-      actualKg: null,
-      date: '2026-09-05',
-      timeSlot: 'Afternoon (13:00 - 17:00)',
-      status: 'In Progress',
-      assignedCrew: 'Crew #2 (Echo Truck)',
-      notes: 'Flat packed cardboard boxes from moving.',
-      image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=300&auto=format&fit=crop&q=80',
-      pointsAwarded: 0
-    }
-  ],
+  requests: [],
   crews: [
     {
       id: 'CREW-1',
