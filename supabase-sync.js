@@ -141,7 +141,7 @@ class SupabaseSyncService {
       pickup_date: r.date || new Date().toISOString().split('T')[0],
       time_slot: r.timeSlot || 'Morning Shift (8.00 a.m - 12.00 p.m)',
       status: r.status || 'Submitted',
-      assigned_crew: r.assignedCrew || 'Unassigned',
+      assigned_crew: (r.assignedCrew && r.assignedCrew !== 'Unassigned') ? r.assignedCrew : null,
       notes: r.notes || null,
       points_awarded: Number(r.pointsAwarded || 0)
     };
@@ -170,7 +170,7 @@ class SupabaseSyncService {
       date: r.pickup_date,
       timeSlot: r.time_slot,
       status: r.status,
-      assignedCrew: r.assigned_crew,
+      assignedCrew: r.assigned_crew || 'Unassigned',
       notes: r.notes,
       image: r.image_url,
       pointsAwarded: Number(r.points_awarded || 0),
@@ -445,14 +445,10 @@ class SupabaseSyncService {
           const cloudRequests = requestsData.map(r => this.mapRequestFromDb(r));
           const cloudIds = new Set(cloudRequests.map(r => r.id));
 
-          // Preserve any newly submitted requests that are still pending cloud sync
-          // or were created within the last 2 minutes
+          // Keep only local requests that are actively awaiting in-flight HTTP push to cloud
           const localPending = (store.data.requests || []).filter(lr => {
             if (cloudIds.has(lr.id)) return false; // Already confirmed in cloud
-            if (lr._isPendingSync || (lr._createdAt && (Date.now() - lr._createdAt < 120000))) {
-              return true;
-            }
-            return false;
+            return lr._isPendingSync === true;
           });
 
           store.data.requests = [...localPending, ...cloudRequests];
@@ -546,10 +542,11 @@ class SupabaseSyncService {
       if (!res.ok) {
         const errText = await res.text();
         console.warn(`Supabase pushRequest warning (${res.status}):`, errText);
-        // If rejected because resident_id violates foreign key in database, retry cleanly without resident_id
-        if (errText.includes('resident_id') || errText.includes('violates foreign key')) {
+        // If rejected because of foreign key constraint (resident_id or assigned_crew), retry cleanly
+        if (errText.includes('violates foreign key') || errText.includes('resident_id') || errText.includes('assigned_crew')) {
           const retryPayload = { ...payload };
           delete retryPayload.resident_id;
+          retryPayload.assigned_crew = null;
           const retryRes = await fetch(`${this.restBase}/pickup_requests`, {
             method: 'POST',
             headers: {

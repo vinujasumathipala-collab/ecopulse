@@ -179,42 +179,7 @@ const CLEAN_INITIAL_DATA = {
   currentUser: DEFAULT_SYSTEM_ACCOUNTS[0],
   userProfile: DEFAULT_SYSTEM_ACCOUNTS[0],
   users: DEFAULT_SYSTEM_ACCOUNTS,
-  requests: [
-    {
-      id: 'REQ-4091',
-      residentId: 'USR-101',
-      residentName: 'Alex Mercer',
-      address: '12 Galle Road, Colombo 03',
-      zone: 'Colombo Fort',
-      category: 'Plastic Recyclable',
-      estimatedKg: 14,
-      actualKg: null,
-      date: '2026-10-15',
-      timeSlot: 'Morning (08:00 - 12:00)',
-      status: 'Assigned',
-      assignedCrew: 'Crew #1 (Alpha Hauler)',
-      notes: 'Clean rinsed HDPE and PET bottles tied in blue clear bags.',
-      image: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=300&auto=format&fit=crop&q=80',
-      pointsAwarded: 0
-    },
-    {
-      id: 'REQ-4092',
-      residentId: 'USR-101',
-      residentName: 'Alex Mercer',
-      address: '88 Duplication Road, Kollupitiya',
-      zone: 'Kollupitiya',
-      category: 'Paper & Cardboard',
-      estimatedKg: 20,
-      actualKg: null,
-      date: '2026-10-16',
-      timeSlot: 'Afternoon (13:00 - 17:00)',
-      status: 'In Progress',
-      assignedCrew: 'Crew #2 (Echo Truck)',
-      notes: 'Flat packed cardboard boxes from moving.',
-      image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=300&auto=format&fit=crop&q=80',
-      pointsAwarded: 0
-    }
-  ],
+  requests: [],
   crews: [
     {
       id: 'CREW-1',
@@ -909,10 +874,23 @@ function initNavigation() {
 
   const refreshBtn = document.getElementById('refreshDashboardBtn');
   if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-      renderDashboard();
-      renderCharts();
-      showToast('Telemetry refreshed.', 'success');
+    refreshBtn.addEventListener('click', async () => {
+      refreshBtn.disabled = true;
+      try {
+        if (window.supabaseSync) {
+          await window.supabaseSync.pullFromSupabase({ background: false });
+        } else {
+          renderDashboard();
+          renderCharts();
+        }
+        showToast('Telemetry refreshed from live database.', 'success');
+      } catch (err) {
+        renderDashboard();
+        renderCharts();
+        showToast('Telemetry refreshed.', 'info');
+      } finally {
+        refreshBtn.disabled = false;
+      }
     });
   }
 
@@ -2029,6 +2007,9 @@ function openModal(modalId) {
   }
 
   if (modalId === 'registerPersonnelModal') {
+    if (typeof populatePersonnelFacilityDropdown === 'function') {
+      populatePersonnelFacilityDropdown();
+    }
     const roleSelect = document.getElementById('personnelRole');
     if (roleSelect) {
       roleSelect.dispatchEvent(new Event('change'));
@@ -2113,24 +2094,6 @@ function openUserProfileModal() {
       <div><strong>Pickups Completed:</strong> ${user.pickupsCompleted || 0}</div>
     </div>
 
-    ${usersList.length > 0 ? `
-      <div style="margin-top:16px; padding:12px; background:var(--bg-surface); border:1px dashed var(--border-color); border-radius:var(--radius-md);">
-        <label for="accountSwitchSelect" style="display:block; font-size:0.82rem; font-weight:700; margin-bottom:6px; color:var(--text-main);">
-          🔄 Switch Active User Account (${usersList.length} registered):
-        </label>
-        <div style="display:flex; gap:8px;">
-          <select id="accountSwitchSelect" class="form-input" style="flex:1; font-size:0.82rem;">
-            ${usersList.map(u => `
-              <option value="${u.id}" ${u.id === user.id ? 'selected' : ''}>
-                ${u.name} (${u.role} - ${u.zone})
-              </option>
-            `).join('')}
-          </select>
-          <button class="btn btn-sm btn-secondary" id="doSwitchAccountBtn">Switch</button>
-        </div>
-      </div>
-    ` : ''}
-
     <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
       ${isAdmin ? `
         <button class="btn btn-sm btn-primary" id="openCreateUserFromModalBtn">
@@ -2140,17 +2103,6 @@ function openUserProfileModal() {
       <button class="btn btn-sm btn-outline" id="openEditProfileBtn">✏️ Edit Account Details</button>
     </div>
   `;
-
-  const doSwitchBtn = document.getElementById('doSwitchAccountBtn');
-  if (doSwitchBtn) {
-    doSwitchBtn.addEventListener('click', () => {
-      const select = document.getElementById('accountSwitchSelect');
-      if (select && select.value) {
-        switchActiveUser(select.value);
-        closeModal('userProfileModal');
-      }
-    });
-  }
 
   const createBtn = document.getElementById('openCreateUserFromModalBtn');
   if (createBtn) {
@@ -2453,6 +2405,24 @@ function generateNextPersonnelId() {
 window.generateNextPersonnelId = generateNextPersonnelId;
 
 // Function 2: Operations Personnel Registration (Crew Leader, Driver, Recycling Center Manager)
+function populatePersonnelFacilityDropdown(selectedName = null) {
+  const select = document.getElementById('personnelAssignmentSelect');
+  if (!select) return;
+
+  const facilities = store.data.recyclingFacilities || [];
+  if (facilities.length === 0) {
+    select.innerHTML = '<option value="">No registered recycling centers found</option>';
+    return;
+  }
+
+  const currentVal = selectedName || select.value;
+  select.innerHTML = facilities.map(f => {
+    const isSelected = (currentVal && currentVal === f.name);
+    return `<option value="${f.name}" ${isSelected ? 'selected' : ''}>${f.name} (${f.zone})</option>`;
+  }).join('');
+}
+window.populatePersonnelFacilityDropdown = populatePersonnelFacilityDropdown;
+
 function initPersonnelForm() {
   const form = document.getElementById('registerPersonnelForm');
   if (!form) return;
@@ -2462,26 +2432,72 @@ function initPersonnelForm() {
   const roleSelect = document.getElementById('personnelRole');
   const assignLabel = document.getElementById('personnelAssignmentLabel');
   const assignInput = document.getElementById('personnelAssignment');
+  const assignSelect = document.getElementById('personnelAssignmentSelect');
   const assignHint = document.getElementById('personnelAssignmentHint');
+  const zoneSelect = document.getElementById('personnelZone');
 
-  if (roleSelect && assignLabel && assignInput && assignHint) {
-    roleSelect.addEventListener('change', () => {
-      const val = roleSelect.value;
-      if (val === 'Crew Leader') {
-        assignLabel.textContent = 'Assigned Team / Supervision Scope';
-        assignInput.placeholder = 'e.g. Lead for Crew #1 (Alpha Hauler)';
-        assignHint.textContent = 'Designate crew supervision scope or zone operations team.';
-      } else if (val === 'Driver') {
-        assignLabel.textContent = 'Vehicle License & Truck Assignment';
-        assignInput.placeholder = 'e.g. Heavy Articulated (Class D) - TRK-101';
-        assignHint.textContent = 'Specify heavy vehicle license class and assigned truck ID.';
-      } else if (val === 'Recycling Center Manager') {
-        assignLabel.textContent = 'Assigned Recycling Center / MRF Facility';
-        assignInput.placeholder = 'e.g. GreenPoly Circular Polymers MRF';
-        assignHint.textContent = 'Specify the material recovery facility or processing plant.';
+  function updateAssignmentRoleState() {
+    if (!roleSelect || !assignLabel || !assignInput || !assignHint) return;
+    const val = roleSelect.value;
+    if (val === 'Crew Leader') {
+      assignLabel.textContent = 'Assigned Team / Supervision Scope';
+      assignInput.style.display = '';
+      if (assignSelect) assignSelect.style.display = 'none';
+      assignInput.placeholder = 'e.g. Lead for Crew #1 (Alpha Hauler)';
+      assignHint.textContent = 'Designate crew supervision scope or zone operations team.';
+    } else if (val === 'Driver') {
+      assignLabel.textContent = 'Vehicle License & Truck Assignment';
+      assignInput.style.display = '';
+      if (assignSelect) assignSelect.style.display = 'none';
+      assignInput.placeholder = 'e.g. Heavy Articulated (Class D) - TRK-101';
+      assignHint.textContent = 'Specify heavy vehicle license class and assigned truck ID.';
+    } else if (val === 'Recycling Center Manager') {
+      assignLabel.textContent = 'Assigned Recycling Center / MRF Facility';
+      assignInput.style.display = 'none';
+      if (assignSelect) {
+        assignSelect.style.display = '';
+        populatePersonnelFacilityDropdown();
+        if (zoneSelect && zoneSelect.value) {
+          const match = (store.data.recyclingFacilities || []).find(f => f.zone === zoneSelect.value);
+          if (match && (!assignSelect.value || assignSelect.value === '')) {
+            assignSelect.value = match.name;
+          }
+        }
+      }
+      assignHint.textContent = 'Select the registered material recovery facility or processing plant.';
+    }
+  }
+
+  if (roleSelect) {
+    roleSelect.addEventListener('change', updateAssignmentRoleState);
+  }
+
+  if (assignSelect && zoneSelect) {
+    assignSelect.addEventListener('change', () => {
+      const selectedFac = (store.data.recyclingFacilities || []).find(f => f.name === assignSelect.value);
+      if (selectedFac && selectedFac.zone && zoneSelect) {
+        const optionExists = Array.from(zoneSelect.options).some(o => o.value === selectedFac.zone);
+        if (optionExists) {
+          zoneSelect.value = selectedFac.zone;
+        }
+      }
+    });
+
+    zoneSelect.addEventListener('change', () => {
+      if (roleSelect && roleSelect.value === 'Recycling Center Manager' && assignSelect) {
+        const match = (store.data.recyclingFacilities || []).find(f => f.zone === zoneSelect.value);
+        if (match) {
+          assignSelect.value = match.name;
+        }
       }
     });
   }
+
+  form.addEventListener('reset', () => {
+    setTimeout(() => {
+      if (roleSelect) roleSelect.dispatchEvent(new Event('change'));
+    }, 0);
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -2494,7 +2510,16 @@ function initPersonnelForm() {
     const emailInput = document.getElementById('personnelEmail');
     const email = (emailInput && emailInput.value.trim()) ? emailInput.value.trim() : `${name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@citypulse.org`;
     const assignField = document.getElementById('personnelAssignment');
-    const assignment = (assignField && assignField.value.trim()) ? assignField.value.trim() : (role === 'Recycling Center Manager' ? `${zone} MRF Liaison` : role === 'Driver' ? 'Heavy Transport Fleet' : `${zone} Field Crew Lead`);
+    const assignSelectField = document.getElementById('personnelAssignmentSelect');
+    let assignment = '';
+    if (role === 'Recycling Center Manager') {
+      assignment = (assignSelectField && assignSelectField.value) ? assignSelectField.value : (assignField ? assignField.value.trim() : '');
+      if (!assignment) {
+        assignment = `${zone} MRF Facility`;
+      }
+    } else {
+      assignment = (assignField && assignField.value.trim()) ? assignField.value.trim() : (role === 'Driver' ? 'Heavy Transport Fleet' : `${zone} Field Crew Lead`);
+    }
     const status = document.getElementById('personnelStatus')?.value || 'Active / On Duty';
 
     if (!name) {
@@ -3131,6 +3156,9 @@ function initFacilityRegistrationForm() {
       if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
     populateRecordBatchFacilityDropdown(newId);
+    if (typeof populatePersonnelFacilityDropdown === 'function') {
+      populatePersonnelFacilityDropdown();
+    }
     form.reset();
     const phoneInput = document.getElementById('newFacPhone');
     if (phoneInput) phoneInput.value = '11 254 9988';
@@ -3634,13 +3662,34 @@ function renderDashboard() {
     batches = batches.filter(b => b.sourceZone.includes(zoneFilter));
   }
 
-  const activeReqCount = reqs.filter(r => r.status !== 'Collected').length;
-  const collectedKg = reqs.filter(r => r.status === 'Collected').reduce((sum, r) => sum + (r.actualKg || 0), 0);
-  const totalBatchKg = batches.reduce((sum, b) => sum + b.weightKg, 0);
+  // 1. Active Requests: Only count requests that are truly active (excluding Collected and Cancelled)
+  const activeReqCount = reqs.filter(r => r.status && r.status !== 'Collected' && r.status !== 'Cancelled').length;
 
-  const totalKg = collectedKg + totalBatchKg;
-  const totalDivertedKg = batches.filter(b => b.status === 'Processed' || b.status === 'Allocated').reduce((sum, b) => sum + b.weightKg, 0);
-  const diversionRate = totalKg > 0 ? ((totalDivertedKg / totalKg) * 100).toFixed(1) : '0.0';
+  // 2. Collected Volume (kg):
+  // Sum weight from collected pickup requests
+  const collectedReqKg = reqs
+    .filter(r => r.status === 'Collected')
+    .reduce((sum, r) => sum + (Number(r.actualKg) || Number(r.estimatedKg) || 0), 0);
+
+  // Plus weight from recyclable batches not already counted via a collected request (prevents duplicate counting)
+  const independentBatchKg = batches
+    .filter(b => !b.requestId || !reqs.some(r => r.id === b.requestId && r.status === 'Collected'))
+    .reduce((sum, b) => sum + (Number(b.weightKg) || 0), 0);
+
+  const totalKg = Math.round(collectedReqKg + independentBatchKg);
+
+  // 3. Diversion / Recycling Rate:
+  // Batches in recyclableBatches that are allocated or processed to certified recycling facilities
+  const totalDivertedKg = batches
+    .filter(b => b.status === 'Processed' || b.status === 'Allocated')
+    .reduce((sum, b) => {
+      if (b.status === 'Processed' && b.yieldKg !== null && !isNaN(b.yieldKg)) {
+        return sum + Number(b.yieldKg);
+      }
+      return sum + (Number(b.weightKg) || 0);
+    }, 0);
+
+  const diversionRate = totalKg > 0 ? (Math.min(100, (totalDivertedKg / totalKg) * 100)).toFixed(1) : '0.0';
 
   const kpiReq = document.getElementById('kpiActiveRequests');
   const kpiKg = document.getElementById('kpiCollectedToday');
@@ -3651,8 +3700,9 @@ function renderDashboard() {
   if (kpiKg) kpiKg.textContent = `${totalKg.toLocaleString()} kg`;
   if (kpiRate) kpiRate.textContent = `${diversionRate}%`;
 
-  const activeCrews = store.data.crews.filter(c => c.status.includes('Active')).length;
-  if (kpiCrew) kpiCrew.textContent = `${activeCrews} / ${store.data.crews.length}`;
+  const allCrews = store.data.crews || [];
+  const activeCrews = allCrews.filter(c => c.status && c.status.toLowerCase().includes('active')).length;
+  if (kpiCrew) kpiCrew.textContent = `${activeCrews} / ${allCrews.length}`;
 
   // Dynamic KPI trends
   const trendReq = document.getElementById('kpiTrendRequests');
@@ -3691,8 +3741,8 @@ function renderDashboard() {
   }
 
   if (subCrew) {
-    if (store.data.crews.length > 0) {
-      subCrew.textContent = `${activeCrews} active out of ${store.data.crews.length} crews`;
+    if (allCrews.length > 0) {
+      subCrew.textContent = `${activeCrews} active out of ${allCrews.length} crews`;
     } else {
       subCrew.textContent = '0 on standby';
     }
@@ -3988,6 +4038,9 @@ function renderWeeklySchedules(zone) {
 function renderFunction2() {
   populateCrewSelector();
   populatePersonnelDatalists();
+  if (typeof populatePersonnelFacilityDropdown === 'function') {
+    populatePersonnelFacilityDropdown();
+  }
   renderDailyJobs();
   renderCrewRoster();
   renderPersonnelRoster();

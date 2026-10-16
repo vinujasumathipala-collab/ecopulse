@@ -366,6 +366,8 @@ ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check; -- Removes 
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_status_check; -- Removes hardcoded check on user status strings
 ALTER TABLE public.pickup_requests DROP CONSTRAINT IF EXISTS pickup_requests_resident_id_fkey; -- Removes strict foreign key constraint to avoid cascade issues
 ALTER TABLE public.pickup_requests DROP CONSTRAINT IF EXISTS pickup_requests_resident_id_fk; -- Removes alternative named foreign key constraint
+ALTER TABLE public.pickup_requests DROP CONSTRAINT IF EXISTS pickup_requests_assigned_crew_fkey; -- Removes foreign key on assigned crew
+ALTER TABLE public.pickup_requests DROP CONSTRAINT IF EXISTS pickup_requests_assigned_crew_fk; -- Removes alternative named foreign key on assigned crew
 ALTER TABLE public.pickup_requests DROP CONSTRAINT IF EXISTS pickup_requests_status_check; -- Removes check constraint on pickup request status
 ALTER TABLE public.pickup_requests DROP CONSTRAINT IF EXISTS pickup_requests_category_check; -- Removes check constraint on waste category names
 ALTER TABLE public.crews DROP CONSTRAINT IF EXISTS crews_status_check; -- Removes check constraint on crew operational status
