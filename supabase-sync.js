@@ -358,8 +358,11 @@ class SupabaseSyncService {
   // ---------------------------------------------------------------------------
   // Full Bi-directional Synchronizer
   // ---------------------------------------------------------------------------
-  async pullFromSupabase() {
-    this.updateStatusBadge('syncing', 'Connecting to Supabase...');
+  async pullFromSupabase(options = {}) {
+    const isBackground = Boolean(options && options.background);
+    if (!isBackground) {
+      this.updateStatusBadge('syncing', 'Connecting to Supabase...');
+    }
 
     try {
       const [
@@ -384,12 +387,12 @@ class SupabaseSyncService {
         this.fetchTable('activity_feed', 'order=id.desc&limit=25')
       ]);
 
-      if (usersData) {
+      if (usersData || requestsData || crewsData) {
         this.isConnected = true;
         this.updateStatusBadge('connected', 'Cloud Database Connected');
 
         // Only populate if cloud has rows, otherwise upload initial local state
-        if (usersData.length > 0) {
+        if (usersData && usersData.length > 0) {
           const oldUsers = store.data.users || [];
           let storedCreds = {};
           try {
@@ -424,35 +427,36 @@ class SupabaseSyncService {
           }
         }
 
-        if (crewsData && crewsData.length > 0) {
+        if (Array.isArray(crewsData)) {
           store.data.crews = crewsData.map(c => this.mapCrewFromDb(c));
         }
 
-        if (personnelData && personnelData.length > 0) {
+        if (Array.isArray(personnelData)) {
           store.data.personnel = personnelData.map(p => this.mapPersonnelFromDb(p));
         }
 
-        if (requestsData && requestsData.length > 0) {
+        // When requests are deleted in Supabase, requestsData reflects the updated array (including empty [])
+        if (Array.isArray(requestsData)) {
           store.data.requests = requestsData.map(r => this.mapRequestFromDb(r));
         }
 
-        if (schedulesData && schedulesData.length > 0) {
+        if (Array.isArray(schedulesData)) {
           store.data.schedules = schedulesData.map(s => this.mapScheduleFromDb(s));
         }
 
-        if (complaintsData && complaintsData.length > 0) {
+        if (Array.isArray(complaintsData)) {
           store.data.complaints = complaintsData.map(c => this.mapComplaintFromDb(c));
         }
 
-        if (facilitiesData && facilitiesData.length > 0) {
+        if (Array.isArray(facilitiesData) && facilitiesData.length > 0) {
           store.data.recyclingFacilities = facilitiesData.map(f => this.mapFacilityFromDb(f));
         }
 
-        if (batchesData && batchesData.length > 0) {
+        if (Array.isArray(batchesData)) {
           store.data.recyclableBatches = batchesData.map(b => this.mapBatchFromDb(b));
         }
 
-        if (activityData && activityData.length > 0) {
+        if (Array.isArray(activityData) && activityData.length > 0) {
           store.data.activityFeed = activityData.map(a => ({ text: a.text, time: a.time, dot: a.dot }));
         }
 
@@ -460,11 +464,41 @@ class SupabaseSyncService {
         if (typeof renderAllViews === 'function') {
           renderAllViews();
         }
+
+        // Initialize background auto-polling and tab focus listeners on first successful sync
+        this.startAutoSync();
       }
     } catch (err) {
       console.warn('Initial Supabase sync caught error, using local state:', err);
-      this.updateStatusBadge('offline', 'Local Cache (Offline)');
+      if (!isBackground) {
+        this.updateStatusBadge('offline', 'Local Cache (Offline)');
+      }
     }
+  }
+
+  // Real-time automatic background polling & focus synchronization
+  startAutoSync(intervalMs = 4000) {
+    if (this._autoSyncStarted) return;
+    this._autoSyncStarted = true;
+
+    // Instantly sync when switching back to tab (e.g. after deleting in Supabase dashboard)
+    window.addEventListener('focus', () => {
+      this.pullFromSupabase({ background: true });
+    });
+
+    // Instantly sync when document visibility changes to visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.pullFromSupabase({ background: true });
+      }
+    });
+
+    // Background interval check every 4s while user is viewing the page
+    setInterval(() => {
+      if (document.visibilityState === 'visible' && !document.hidden) {
+        this.pullFromSupabase({ background: true });
+      }
+    }, intervalMs);
   }
 
   // Real-time Cloud Push Operations
@@ -488,6 +522,10 @@ class SupabaseSyncService {
     return await this.updateRecord('pickup_requests', 'id', req.id, this.mapRequestToDb(req));
   }
 
+  async deleteRequest(reqId) {
+    return await this.deleteRecord('pickup_requests', 'id', reqId);
+  }
+
   async pushCrew(crew) {
     return await this.insertRecord('crews', this.mapCrewToDb(crew));
   }
@@ -502,6 +540,10 @@ class SupabaseSyncService {
 
   async pushPersonnel(p) {
     return await this.insertRecord('operations_personnel', this.mapPersonnelToDb(p));
+  }
+
+  async deletePersonnel(pId) {
+    return await this.deleteRecord('operations_personnel', 'id', pId);
   }
 
   async pushSchedule(s) {

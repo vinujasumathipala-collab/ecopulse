@@ -80,7 +80,10 @@ const DEFAULT_SYSTEM_ACCOUNTS = [
   }
 ];
 
-// 7 Official Municipal Zone Segregation & Recycling Centers (One Dedicated Center per Zone - Function 3)
+// =============================================================================
+// [FUNCTION 3 DATA] 7 Official Municipal Zone Segregation & Recycling Centers (MRFs)
+// One Dedicated Center per Colombo Zone - Implements Function 3 Facility Management
+// =============================================================================
 const DEFAULT_RECYCLING_FACILITIES = [
   {
     id: 'FAC-FORT',
@@ -286,6 +289,10 @@ const CLEAN_INITIAL_DATA = {
       crewName: 'Crew #1 (Alpha Hauler)'
     }
   ],
+  // ===========================================================================
+  // [FUNCTION 3 STATE] Interactive Segregation Guide Items & Waste Categories
+  // Powers the citizen segregation wizard, bin classification, and disposal rules
+  // ===========================================================================
   segregationItems: [
     { name: 'Plastic Milk Jug', bin: 'plastic', binName: '🟡 Yellow Bin', prep: 'Rinse thoroughly, flatten to save truck volume, cap may be left attached.', recyclability: '100% Recyclable (HDPE 2)', icon: '🧴' },
     { name: 'PET Water & Soda Bottle', bin: 'plastic', binName: '🟡 Yellow Bin', prep: 'Empty liquid completely, squash body, keep label intact for optical sorting.', recyclability: '100% Recyclable (PET 1)', icon: '🥤' },
@@ -340,6 +347,7 @@ const CLEAN_INITIAL_DATA = {
       rating: '★★★★☆ Rare Metals'
     }
   ],
+  // [FUNCTION 3 STATE] Recyclable Batches & MRF Directory (Local In-Memory State)
   recyclableBatches: [],
   recyclingFacilities: JSON.parse(JSON.stringify(DEFAULT_RECYCLING_FACILITIES)),
   complaints: [],
@@ -614,8 +622,11 @@ class AppStore {
             }
           });
         }
-        if (!parsed.crews || parsed.crews.length === 0) parsed.crews = JSON.parse(JSON.stringify(CLEAN_INITIAL_DATA.crews));
-        if (!parsed.requests || parsed.requests.length === 0) parsed.requests = JSON.parse(JSON.stringify(CLEAN_INITIAL_DATA.requests));
+        if (!parsed.crews || !Array.isArray(parsed.crews)) parsed.crews = JSON.parse(JSON.stringify(CLEAN_INITIAL_DATA.crews));
+        if (!parsed.requests || !Array.isArray(parsed.requests)) parsed.requests = [];
+        if (!parsed.schedules || !Array.isArray(parsed.schedules)) parsed.schedules = [];
+        if (!parsed.complaints || !Array.isArray(parsed.complaints)) parsed.complaints = [];
+        if (!parsed.recyclableBatches || !Array.isArray(parsed.recyclableBatches)) parsed.recyclableBatches = [];
         if (!parsed.recyclingFacilities || parsed.recyclingFacilities.length < 7 || !parsed.recyclingFacilities.some(f => f.zone === 'Colombo Fort')) {
           parsed.recyclingFacilities = JSON.parse(JSON.stringify(DEFAULT_RECYCLING_FACILITIES));
         }
@@ -1142,8 +1153,10 @@ function applyRolePermissions(user) {
     crewSelect.addEventListener('change', renderDailyJobs);
   }
 
-  // 6. Function 3 (Recycling & Sort Guides) Access Controls
-  // Admins, Managers, and Crew Leaders have privileged recycler actions & operational management views
+  // ===========================================================================
+  // [FUNCTION 3 ACCESS CONTROLS] Role-Based Permissions for Segregation & MRFs
+  // Residents can only see the Segregation Guide. Admin/Managers can access Batches & Facilities.
+  // ===========================================================================
   const isPrivilegedRecycler = (roleKey === 'admin' || roleKey === 'manager' || roleKey === 'crew_leader');
   const f3Actions = document.getElementById('f3PaneActions');
   if (f3Actions) f3Actions.style.display = isPrivilegedRecycler ? 'flex' : 'none';
@@ -1621,11 +1634,34 @@ window.cancelPickupRequest = function(reqId) {
     });
     store.saveState();
     if (window.supabaseSync) {
-      window.supabaseSync.pushRequest(req);
+      window.supabaseSync.updateRequest(req);
       if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
     renderAllViews();
     showToast(`Pickup request ${reqId} has been cancelled.`, 'warning');
+  }
+};
+
+// -----------------------------------------------------------------------------
+// Permanently Delete Pickup Request (Client Store & Supabase Database)
+// -----------------------------------------------------------------------------
+window.deletePickupRequest = async function(reqId) {
+  const req = (store.data.requests || []).find(r => r.id === reqId);
+  const label = req ? `${req.id} (${req.category})` : reqId;
+  if (confirm(`Are you sure you want to permanently delete pickup request ${label}? This will remove it from both the system and the cloud database.`)) {
+    store.data.requests = (store.data.requests || []).filter(r => r.id !== reqId);
+    store.data.activityFeed.unshift({
+      text: `Pickup request ${reqId} was permanently deleted.`,
+      time: 'Just now',
+      dot: 'rose'
+    });
+    store.saveState();
+    if (window.supabaseSync) {
+      await window.supabaseSync.deleteRequest(reqId);
+      if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
+    }
+    renderAllViews();
+    showToast(`Pickup request ${reqId} deleted permanently.`, 'info');
   }
 };
 
@@ -1992,6 +2028,13 @@ function openModal(modalId) {
     populateCrewPersonnelDropdowns();
   }
 
+  if (modalId === 'registerPersonnelModal') {
+    const roleSelect = document.getElementById('personnelRole');
+    if (roleSelect) {
+      roleSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
   // Pre-fill smart defaults for effortless pickup submission
   if (modalId === 'requestPickupModal') {
     const today = new Date();
@@ -2031,7 +2074,19 @@ function closeModal(modalId) {
 }
 
 function openUserProfileModal() {
-  const user = store.data.userProfile;
+  const usersList = store.data.users || [];
+  const user = store.data.userProfile || store.data.currentUser || (usersList.length > 0 ? usersList[0] : {
+    name: 'Kasun Wickramasinghe',
+    email: 'resident.kasun@colombo.gov.lk',
+    phone: '+94 77 123 4567',
+    accountType: 'Residential Account',
+    id: 'USR-101',
+    zone: 'Colombo Fort',
+    address: '12 Galle Road, Colombo Fort',
+    ecoPoints: 120,
+    totalRecycledKg: 45,
+    pickupsCompleted: 8
+  });
   const content = document.getElementById('userProfileModalContent');
   if (!content) return;
 
@@ -2044,18 +2099,18 @@ function openUserProfileModal() {
         <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
       <div>
-        <h3 style="font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:700;">${user.name}</h3>
-        <p style="font-size:0.82rem; color:var(--text-muted);">${user.email} • ${formatToSriLankanPhone(user.phone)}</p>
+        <h3 style="font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:700;">${user.name || 'Resident User'}</h3>
+        <p style="font-size:0.82rem; color:var(--text-muted);">${user.email || 'N/A'} • ${formatToSriLankanPhone(user.phone || '')}</p>
         <span class="status-pill active" style="margin-top:4px; display:inline-block;">${user.accountType || 'Residential'}</span>
       </div>
     </div>
     <div style="background:var(--bg-surface-subtle); padding:14px; border-radius:var(--radius-md); border:1px solid var(--border-color); display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.82rem;">
-      <div><strong>Resident ID:</strong> ${user.id}</div>
-      <div><strong>Assigned Zone:</strong> ${user.zone}</div>
-      <div><strong>Address:</strong> ${user.address}</div>
-      <div><strong>Eco-Reward Points:</strong> <span class="text-emerald font-bold">${user.ecoPoints}</span></div>
-      <div><strong>Total Diverted:</strong> ${user.totalRecycledKg} kg</div>
-      <div><strong>Pickups Completed:</strong> ${user.pickupsCompleted}</div>
+      <div><strong>Resident ID:</strong> ${user.id || 'N/A'}</div>
+      <div><strong>Assigned Zone:</strong> ${user.zone || 'Colombo Fort'}</div>
+      <div><strong>Address:</strong> ${user.address || 'N/A'}</div>
+      <div><strong>Eco-Reward Points:</strong> <span class="text-emerald font-bold">${user.ecoPoints || 0}</span></div>
+      <div><strong>Total Diverted:</strong> ${user.totalRecycledKg || 0} kg</div>
+      <div><strong>Pickups Completed:</strong> ${user.pickupsCompleted || 0}</div>
     </div>
 
     ${usersList.length > 0 ? `
@@ -2109,10 +2164,13 @@ function openUserProfileModal() {
     });
   }
 
-  document.getElementById('openEditProfileBtn').addEventListener('click', () => {
-    closeModal('userProfileModal');
-    openEditProfileModal();
-  });
+  const editProfBtn = document.getElementById('openEditProfileBtn');
+  if (editProfBtn) {
+    editProfBtn.addEventListener('click', () => {
+      closeModal('userProfileModal');
+      openEditProfileModal();
+    });
+  }
 
   openModal('userProfileModal');
 }
@@ -2362,10 +2420,25 @@ function initPickupRequestForm() {
   }
 }
 
+function generateNextPersonnelId() {
+  let maxId = 100;
+  (store.data.personnel || []).forEach(p => {
+    const match = (p.id || '').match(/PER-(\d+)/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxId) maxId = num;
+    }
+  });
+  return `PER-${maxId + 1}`;
+}
+window.generateNextPersonnelId = generateNextPersonnelId;
+
 // Function 2: Operations Personnel Registration (Crew Leader, Driver, Recycling Center Manager)
 function initPersonnelForm() {
   const form = document.getElementById('registerPersonnelForm');
   if (!form) return;
+
+  form.noValidate = true;
 
   const roleSelect = document.getElementById('personnelRole');
   const assignLabel = document.getElementById('personnelAssignmentLabel');
@@ -2393,30 +2466,41 @@ function initPersonnelForm() {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const role = document.getElementById('personnelRole').value;
-    const name = document.getElementById('personnelName').value.trim();
-    const zone = document.getElementById('personnelZone').value;
-    const phoneRaw = document.getElementById('personnelPhone').value.trim();
-    const email = document.getElementById('personnelEmail').value.trim() || `${name.toLowerCase().replace(/\s+/g, '.')}@citypulse.org`;
-    const assignment = document.getElementById('personnelAssignment').value.trim() || 'General Operations Field Staff';
-    const status = document.getElementById('personnelStatus').value;
+    const role = document.getElementById('personnelRole')?.value || 'Crew Leader';
+    const nameInput = document.getElementById('personnelName');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const zone = document.getElementById('personnelZone')?.value || 'Colombo Fort';
+    const phoneInput = document.getElementById('personnelPhone');
+    const phoneRaw = phoneInput ? phoneInput.value.trim() : '';
+    const emailInput = document.getElementById('personnelEmail');
+    const email = (emailInput && emailInput.value.trim()) ? emailInput.value.trim() : `${name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@citypulse.org`;
+    const assignField = document.getElementById('personnelAssignment');
+    const assignment = (assignField && assignField.value.trim()) ? assignField.value.trim() : (role === 'Recycling Center Manager' ? `${zone} MRF Liaison` : role === 'Driver' ? 'Heavy Transport Fleet' : `${zone} Field Crew Lead`);
+    const status = document.getElementById('personnelStatus')?.value || 'Active / On Duty';
 
-    if (!name || !phoneRaw) {
-      showToast('Please provide full name and contact phone.', 'warning');
+    if (!name) {
+      showToast('Please enter the full name for this operations staff member.', 'warning');
+      if (nameInput) nameInput.focus();
+      return;
+    }
+
+    if (!phoneRaw) {
+      showToast('Please enter a 9-digit contact phone number (e.g. 77 123 4567).', 'warning');
+      if (phoneInput) phoneInput.focus();
       return;
     }
 
     const phoneValidation = validateSriLankanPhoneNumber(phoneRaw);
     if (!phoneValidation.valid) {
       showToast(phoneValidation.message, 'error');
-      document.getElementById('personnelPhone').focus();
+      if (phoneInput) phoneInput.focus();
       return;
     }
     const phone = phoneValidation.formatted;
 
     if (!store.data.personnel) store.data.personnel = [];
 
-    const newId = 'PER-' + (store.data.personnel.length + 101);
+    const newId = generateNextPersonnelId();
     const newStaff = {
       id: newId,
       name,
@@ -2441,13 +2525,27 @@ function initPersonnelForm() {
       window.supabaseSync.pushPersonnel(newStaff);
       if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
+
     form.reset();
     closeModal('registerPersonnelModal');
     populateCrewPersonnelDropdowns();
     renderFunction2();
     renderAllViews();
     showToast(`${role} "${name}" registered successfully!`, 'success');
+
+    // Switch to Personnel Roster subtab so the new personnel card is immediately visible
+    const personnelSubtab = document.querySelector('[data-f2sub="personnel-roster"]');
+    if (personnelSubtab) {
+      personnelSubtab.click();
+    }
   });
+
+  const submitBtn = document.getElementById('btnRegisterPersonnelSubmit');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', () => {
+      // Allow form submit listener to handle validation
+    });
+  }
 }
 
 // 2. Register New Crew Form (Function 2)
@@ -2495,7 +2593,7 @@ function initCrewRegistrationForm() {
 
     if (leader && !store.data.personnel.some(p => p.name.toLowerCase() === leader.toLowerCase() && p.role === 'Crew Leader')) {
       store.data.personnel.push({
-        id: 'PER-' + (store.data.personnel.length + 101),
+        id: generateNextPersonnelId(),
         name: leader,
         role: 'Crew Leader',
         phone: '+94 77 ' + Math.floor(1000000 + Math.random() * 9000000),
@@ -2508,7 +2606,7 @@ function initCrewRegistrationForm() {
 
     if (driver && !store.data.personnel.some(p => p.name.toLowerCase() === driver.toLowerCase() && p.role === 'Driver')) {
       store.data.personnel.push({
-        id: 'PER-' + (store.data.personnel.length + 101),
+        id: generateNextPersonnelId(),
         name: driver,
         role: 'Driver',
         phone: '+94 71 ' + Math.floor(1000000 + Math.random() * 9000000),
@@ -2521,7 +2619,7 @@ function initCrewRegistrationForm() {
 
     if (centerManager && !store.data.personnel.some(p => p.name.toLowerCase() === centerManager.toLowerCase() && p.role === 'Recycling Center Manager')) {
       store.data.personnel.push({
-        id: 'PER-' + (store.data.personnel.length + 101),
+        id: generateNextPersonnelId(),
         name: centerManager,
         role: 'Recycling Center Manager',
         phone: '+94 11 ' + Math.floor(2000000 + Math.random() * 7000000),
@@ -2852,7 +2950,10 @@ function openRecordCollectionModal(reqId) {
   openModal('recordCollectionModal');
 }
 
-// 5. Record Recyclable Batch Form (Function 3)
+// =============================================================================
+// [FUNCTION 3 FORM 5] Record Recyclable Batch Form (Incoming Waste at Yard)
+// Handles logging bulk recyclable materials arriving at municipal processing yards
+// =============================================================================
 function populateRecordBatchFacilityDropdown(selectedId = null) {
   const select = document.getElementById('newBatchFacility');
   if (!select) return;
@@ -2956,7 +3057,10 @@ function initBatchRegistrationForm() {
   });
 }
 
-// 6. Register Partner Recycling Facility / MRF (Function 3)
+// =============================================================================
+// [FUNCTION 3 FORM 6] Register Partner Recycling Facility / MRF
+// Allows municipal administrators to register new material recovery facilities
+// =============================================================================
 function initFacilityRegistrationForm() {
   const form = document.getElementById('registerFacilityForm');
   if (!form) return;
@@ -3018,7 +3122,10 @@ function initFacilityRegistrationForm() {
   });
 }
 
-// 7. Allocate Batch to MRF (Function 3)
+// =============================================================================
+// [FUNCTION 3 FORM 7] Allocate Recyclable Batch to Processing Facility / MRF
+// Manages batch dispatching, freight transport vehicles, and MRF load tracking
+// =============================================================================
 function initAllocationForm() {
   const form = document.getElementById('allocateBatchForm');
   if (!form) return;
@@ -3089,7 +3196,10 @@ function openAllocateBatchModal(batchId) {
   openModal('allocateBatchModal');
 }
 
-// 8. Record Processing Yield (Function 3)
+// =============================================================================
+// [FUNCTION 3 FORM 8] Record Processing Yield & Environmental Audit Trail
+// Certifies recovered materials yield (kg), recovery rate (%), and CO2 offset
+// =============================================================================
 function initYieldForm() {
   const form = document.getElementById('recordYieldForm');
   if (!form) return;
@@ -3143,7 +3253,10 @@ function openRecordYieldModal(batchId) {
   openModal('recordYieldModal');
 }
 
-// 9. Add Segregation Knowledge Item Form (Function 3)
+// =============================================================================
+// [FUNCTION 3 FORM 9] Add Segregation Knowledge Item to Citizen Guidance Matrix
+// Extends the segregation wizard with new items, disposal tips, and bin colors
+// =============================================================================
 function initAddSegregationItemForm() {
   const form = document.getElementById('addSegregationItemForm');
   if (!form) return;
@@ -3317,7 +3430,7 @@ function initUserRegistrationForm() {
       const staffRole = role === 'Crew Leader' ? 'Crew Leader' : role === 'Crew Driver' ? 'Driver' : 'Recycling Center Manager';
       if (!store.data.personnel.some(p => p.email === email)) {
         store.data.personnel.push({
-          id: 'PER-' + (100 + store.data.personnel.length + 1),
+          id: generateNextPersonnelId(),
           name: name,
           role: staffRole,
           phone: phone,
@@ -3382,6 +3495,10 @@ function initUserRegistrationForm() {
 // -----------------------------------------------------------------------------
 // Segregation Search & Knowledge Wizard
 // -----------------------------------------------------------------------------
+// =============================================================================
+// [FUNCTION 3 CONTROLLER] Interactive Waste Segregation Search & Bin Filter Engine
+// Filters segregation items in real-time by search query and bin categories
+// =============================================================================
 function initSegregationSearch() {
   const searchInput = document.getElementById('segregationSearchInput');
   const clearBtn = document.getElementById('clearSegregationSearch');
@@ -3715,15 +3832,27 @@ function renderActiveRequests(categoryFilter = 'all') {
               const roleKey = normalizeRole(store.data.currentUser?.role || store.data.activeRole);
               if (roleKey === 'user') {
                 if (req.status !== 'Collected' && req.status !== 'Cancelled') {
-                  return `<button class="btn-cancel-req" onclick="cancelPickupRequest('${req.id}')">❌ Cancel Request</button>`;
+                  return `
+                    <button class="btn-cancel-req" onclick="cancelPickupRequest('${req.id}')">❌ Cancel</button>
+                    <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3);">🗑️ Delete</button>
+                  `;
                 } else if (req.status === 'Cancelled') {
-                  return `<span class="status-pill cancelled">Cancelled</span>`;
+                  return `
+                    <span class="status-pill cancelled">Cancelled</span>
+                    <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3);">🗑️ Delete</button>
+                  `;
                 } else {
-                  return `<span style="font-size:0.75rem; color:var(--primary); font-weight:700;">+${req.pointsAwarded || 0} pts awarded</span>`;
+                  return `
+                    <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">+${req.pointsAwarded || 0} pts awarded</span>
+                    <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3); font-size:0.72rem; padding:2px 6px;">🗑️ Delete</button>
+                  `;
                 }
               } else if (roleKey === 'crew_leader') {
                 if (req.status === 'Cancelled') {
-                  return `<span class="status-pill cancelled">Cancelled</span>`;
+                  return `
+                    <span class="status-pill cancelled">Cancelled</span>
+                    <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3);">🗑️ Delete</button>
+                  `;
                 }
                 const isUnassigned = !req.assignedCrew || req.assignedCrew === 'Unassigned' || req.status === 'Submitted';
                 return `
@@ -3750,6 +3879,7 @@ function renderActiveRequests(categoryFilter = 'all') {
                   ` : `
                     <button class="btn btn-sm btn-danger" onclick="rescheduleMissed('${req.id}')">Reschedule</button>
                   `}
+                  <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3);">🗑️ Delete</button>
                 `;
               }
             })()}
@@ -4051,6 +4181,9 @@ window.deletePersonnel = function(id) {
   if (confirm(`Are you sure you want to remove ${name} from operations personnel?`)) {
     store.data.personnel = (store.data.personnel || []).filter(p => p.id !== id);
     store.saveState();
+    if (window.supabaseSync) {
+      window.supabaseSync.deletePersonnel(id);
+    }
     renderPersonnelRoster();
     populatePersonnelDatalists();
     showToast(`Removed ${name} from operations personnel.`, 'info');
@@ -4318,7 +4451,10 @@ function renderDispatchBoard() {
         </select>
       </td>
       <td>
-        <button class="btn btn-sm btn-primary" onclick="assignRequestToCrew('${req.id}')" ${store.data.crews.length === 0 ? 'disabled' : ''}>Manual Dispatch</button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="btn btn-sm btn-primary" onclick="assignRequestToCrew('${req.id}')" ${store.data.crews.length === 0 ? 'disabled' : ''}>Manual Dispatch</button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deletePickupRequest('${req.id}')" title="Permanently delete request" style="padding:4px 8px;">🗑️</button>
+        </div>
       </td>
     </tr>
   `;
@@ -4430,9 +4566,10 @@ function rescheduleMissed(reqId) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Render Function 3 (Segregation & Recycling)
-// -----------------------------------------------------------------------------
+// =============================================================================
+// [FUNCTION 3 VIEW RENDERERS] Master Render Pipeline for Segregation & Recycling
+// Coordinates guide cards, waste categories, recyclable batches, and MRF directories
+// =============================================================================
 function renderFunction3() {
   filterSegregationGuide();
   renderWasteCategoriesTable();
@@ -4775,7 +4912,7 @@ function updateUserRole(userId, newRole) {
     }
   } else if (newRole === 'Crew Leader' || newRole === 'Manager' || newRole === 'Crew Driver') {
     store.data.personnel.push({
-      id: 'PER-' + (100 + store.data.personnel.length + 1),
+      id: generateNextPersonnelId(),
       name: user.name,
       role: newRole === 'Crew Leader' ? 'Crew Leader' : newRole === 'Crew Driver' ? 'Driver' : 'Recycling Center Manager',
       phone: user.phone,
