@@ -130,26 +130,31 @@ class SupabaseSyncService {
   }
 
   mapRequestToDb(r) {
-    return {
+    const payload = {
       id: r.id,
-      resident_id: r.residentId || null,
-      resident_name: r.residentName,
-      address: r.address,
-      zone: r.zone,
-      category: r.category,
+      resident_name: r.residentName || 'Citizen User',
+      address: r.address || 'Curbside',
+      zone: r.zone || 'Colombo Fort',
+      category: r.category || 'Plastic Recyclable',
       estimated_kg: Number(r.estimatedKg || 10),
-      actual_kg: r.actualKg !== null ? Number(r.actualKg) : null,
-      pickup_date: r.date,
-      time_slot: r.timeSlot,
+      actual_kg: r.actualKg !== null && r.actualKg !== undefined ? Number(r.actualKg) : null,
+      pickup_date: r.date || new Date().toISOString().split('T')[0],
+      time_slot: r.timeSlot || 'Morning Shift (8.00 a.m - 12.00 p.m)',
       status: r.status || 'Submitted',
-      assigned_crew: r.assignedCrew || null,
+      assigned_crew: r.assignedCrew || 'Unassigned',
       notes: r.notes || null,
-      image_url: r.image || null,
-      points_awarded: Number(r.pointsAwarded || 0),
-      missed_reason: r.missedReason || null,
-      facility_id: r.facilityId || null,
-      facility_name: r.facilityName || null
+      points_awarded: Number(r.pointsAwarded || 0)
     };
+
+    if (r.residentId) payload.resident_id = r.residentId;
+    if (r.image && typeof r.image === 'string' && (r.image.startsWith('http') || r.image.length < 50000)) {
+      payload.image_url = r.image;
+    }
+    if (r.missedReason) payload.missed_reason = r.missedReason;
+    if (r.facilityId) payload.facility_id = r.facilityId;
+    if (r.facilityName) payload.facility_name = r.facilityName;
+
+    return payload;
   }
 
   mapRequestFromDb(r) {
@@ -435,9 +440,22 @@ class SupabaseSyncService {
           store.data.personnel = personnelData.map(p => this.mapPersonnelFromDb(p));
         }
 
-        // When requests are deleted in Supabase, requestsData reflects the updated array (including empty [])
+        // Reconcile requests: keep cloud state while preserving freshly submitted local requests
         if (Array.isArray(requestsData)) {
-          store.data.requests = requestsData.map(r => this.mapRequestFromDb(r));
+          const cloudRequests = requestsData.map(r => this.mapRequestFromDb(r));
+          const cloudIds = new Set(cloudRequests.map(r => r.id));
+
+          // Preserve any newly submitted requests that are still pending cloud sync
+          // or were created within the last 2 minutes
+          const localPending = (store.data.requests || []).filter(lr => {
+            if (cloudIds.has(lr.id)) return false; // Already confirmed in cloud
+            if (lr._isPendingSync || (lr._createdAt && (Date.now() - lr._createdAt < 120000))) {
+              return true;
+            }
+            return false;
+          });
+
+          store.data.requests = [...localPending, ...cloudRequests];
         }
 
         if (Array.isArray(schedulesData)) {
@@ -515,7 +533,40 @@ class SupabaseSyncService {
   }
 
   async pushRequest(req) {
-    return await this.insertRecord('pickup_requests', this.mapRequestToDb(req));
+    const payload = this.mapRequestToDb(req);
+    try {
+      const res = await fetch(`${this.restBase}/pickup_requests`, {
+        method: 'POST',
+        headers: {
+          ...this.headers,
+          'Prefer': 'resolution=merge-duplicates,return=representation'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`Supabase pushRequest warning (${res.status}):`, errText);
+        // If rejected because resident_id violates foreign key in database, retry cleanly without resident_id
+        if (errText.includes('resident_id') || errText.includes('violates foreign key')) {
+          const retryPayload = { ...payload };
+          delete retryPayload.resident_id;
+          const retryRes = await fetch(`${this.restBase}/pickup_requests`, {
+            method: 'POST',
+            headers: {
+              ...this.headers,
+              'Prefer': 'resolution=merge-duplicates,return=representation'
+            },
+            body: JSON.stringify(retryPayload)
+          });
+          if (retryRes.ok) return await retryRes.json();
+        }
+        return null;
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('Supabase pushRequest network error:', err);
+      return null;
+    }
   }
 
   async updateRequest(req) {

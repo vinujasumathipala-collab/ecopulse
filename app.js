@@ -2350,7 +2350,17 @@ function initPickupRequestForm() {
     }
 
     if (!store.data.requests) store.data.requests = [];
-    const newReqId = 'REQ-' + (1000 + store.data.requests.length + 1);
+    
+    // Generate guaranteed unique request ID
+    let maxReqNum = 4090;
+    (store.data.requests || []).forEach(r => {
+      const m = (r.id || '').match(/REQ-(\d+)/i);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (!isNaN(num) && num > maxReqNum) maxReqNum = num;
+      }
+    });
+    const newReqId = `REQ-${maxReqNum + 1}`;
 
     // Manual Crew Assignment:
     // Requests start as 'Submitted' and 'Unassigned'. Dispatchers or managers manually assign available crews.
@@ -2376,7 +2386,9 @@ function initPickupRequestForm() {
       assignedCrew: assignedCrewName,
       notes: notes || 'Doorstep collection requested.',
       image: currentUploadedImageBase64 || null,
-      pointsAwarded: 0
+      pointsAwarded: 0,
+      _createdAt: Date.now(),
+      _isPendingSync: true
     };
 
     store.data.requests.unshift(newRequest);
@@ -2390,7 +2402,14 @@ function initPickupRequestForm() {
     store.saveState();
 
     if (window.supabaseSync) {
-      window.supabaseSync.pushRequest(newRequest);
+      window.supabaseSync.pushRequest(newRequest).then(res => {
+        if (res) {
+          delete newRequest._isPendingSync;
+          store.saveState();
+        }
+      }).catch(err => {
+        console.warn('Supabase sync warning for pickup request:', err);
+      });
       if (store.data.activityFeed.length > 0) window.supabaseSync.pushActivity(store.data.activityFeed[0]);
     }
 
