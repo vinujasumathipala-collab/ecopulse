@@ -1120,14 +1120,23 @@ function applyRolePermissions(user) {
     }
   }
 
-  // Pre-fill pickup request defaults
-  const reqAddress = document.getElementById('reqPickupAddress');
-  if (reqAddress && user.address) reqAddress.value = user.address;
-  const reqZone = document.getElementById('reqPickupZone');
-  if (reqZone && user.zone) reqZone.value = user.zone;
+  // Pre-fill pickup request defaults ONLY if modal is closed and fields are empty
+  const pickupModal = document.getElementById('requestPickupModal');
+  const isPickupModalOpen = pickupModal && !pickupModal.classList.contains('hidden') && pickupModal.getAttribute('aria-hidden') !== 'true';
+  if (!isPickupModalOpen) {
+    const reqAddress = document.getElementById('reqPickupAddress');
+    if (reqAddress && !reqAddress.value && user.address) {
+      reqAddress.value = user.address;
+    }
+    const reqZone = document.getElementById('reqPickupZone');
+    if (reqZone && !reqZone.dataset.userChosen && !reqZone.value && user.zone) {
+      reqZone.value = user.zone;
+    }
+  }
 
   const crewSelect = document.getElementById('activeCrewSelector');
-  if (crewSelect) {
+  if (crewSelect && !crewSelect._hasChangeListener) {
+    crewSelect._hasChangeListener = true;
     crewSelect.addEventListener('change', renderDailyJobs);
   }
 
@@ -1713,6 +1722,11 @@ window.openUpdateRequestModal = function(reqId) {
   const req = store.data.requests.find(r => r.id === reqId);
   if (!req) return;
 
+  if (req.status === 'Collected') {
+    showToast(`Request ${req.id} has already been picked up and completed. Further updates are locked.`, 'info');
+    return;
+  }
+
   document.getElementById('editReqId').value = req.id;
 
   const banner = document.getElementById('editReqSummaryBanner');
@@ -1769,6 +1783,12 @@ function initUpdateRequestForm() {
     const reqId = document.getElementById('editReqId').value;
     const req = store.data.requests.find(r => r.id === reqId);
     if (!req) return;
+
+    if (req.status === 'Collected') {
+      showToast(`Request ${req.id} is already completed & collected. Updates are locked.`, 'warning');
+      closeModal('updateRequestModal');
+      return;
+    }
 
     const newStatus = document.getElementById('editReqStatus').value;
     const actualWeightVal = document.getElementById('editReqActualWeight').value;
@@ -2036,8 +2056,8 @@ function openModal(modalId) {
       addrInput.value = store.data.userProfile.address || '12 Galle Road, Colombo';
     }
     const zoneSelect = document.getElementById('reqPickupZone');
-    if (zoneSelect && store.data.userProfile.zone) {
-      zoneSelect.value = store.data.userProfile.zone;
+    if (zoneSelect && !zoneSelect.dataset.userChosen) {
+      zoneSelect.value = store.data.userProfile.zone || 'Colombo Fort';
     }
     const qtyInput = document.getElementById('reqEstimatedQty');
     if (qtyInput && !qtyInput.value) {
@@ -2279,6 +2299,13 @@ function initPickupRequestForm() {
     if (!dateInput.value || dateInput.value < todayStr) dateInput.value = todayStr;
   }
 
+  const zoneSelect = document.getElementById('reqPickupZone');
+  if (zoneSelect) {
+    zoneSelect.addEventListener('change', () => {
+      zoneSelect.dataset.userChosen = 'true';
+    });
+  }
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -2366,6 +2393,10 @@ function initPickupRequestForm() {
     }
 
     form.reset();
+    if (zoneSelect) {
+      delete zoneSelect.dataset.userChosen;
+      zoneSelect.value = store.data.userProfile.zone || 'Colombo Fort';
+    }
     const removePreview = document.getElementById('removeImagePreviewBtn');
     if (removePreview) removePreview.click();
     currentUploadedImageBase64 = null;
@@ -2409,8 +2440,11 @@ function populatePersonnelFacilityDropdown(selectedName = null) {
   const select = document.getElementById('personnelAssignmentSelect');
   if (!select) return;
 
-  const facilities = store.data.recyclingFacilities || [];
-  if (facilities.length === 0) {
+  const facilities = (store && store.data && store.data.recyclingFacilities && store.data.recyclingFacilities.length > 0)
+    ? store.data.recyclingFacilities
+    : DEFAULT_RECYCLING_FACILITIES;
+
+  if (!facilities || facilities.length === 0) {
     select.innerHTML = '<option value="">No registered recycling centers found</option>';
     return;
   }
@@ -2441,13 +2475,13 @@ function initPersonnelForm() {
     const val = roleSelect.value;
     if (val === 'Crew Leader') {
       assignLabel.textContent = 'Assigned Team / Supervision Scope';
-      assignInput.style.display = '';
+      assignInput.style.display = 'block';
       if (assignSelect) assignSelect.style.display = 'none';
       assignInput.placeholder = 'e.g. Lead for Crew #1 (Alpha Hauler)';
       assignHint.textContent = 'Designate crew supervision scope or zone operations team.';
     } else if (val === 'Driver') {
       assignLabel.textContent = 'Vehicle License & Truck Assignment';
-      assignInput.style.display = '';
+      assignInput.style.display = 'block';
       if (assignSelect) assignSelect.style.display = 'none';
       assignInput.placeholder = 'e.g. Heavy Articulated (Class D) - TRK-101';
       assignHint.textContent = 'Specify heavy vehicle license class and assigned truck ID.';
@@ -2455,10 +2489,10 @@ function initPersonnelForm() {
       assignLabel.textContent = 'Assigned Recycling Center / MRF Facility';
       assignInput.style.display = 'none';
       if (assignSelect) {
-        assignSelect.style.display = '';
+        assignSelect.style.display = 'block';
         populatePersonnelFacilityDropdown();
         if (zoneSelect && zoneSelect.value) {
-          const match = (store.data.recyclingFacilities || []).find(f => f.zone === zoneSelect.value);
+          const match = ((store && store.data && store.data.recyclingFacilities) || DEFAULT_RECYCLING_FACILITIES).find(f => f.zone === zoneSelect.value);
           if (match && (!assignSelect.value || assignSelect.value === '')) {
             assignSelect.value = match.name;
           }
@@ -2914,6 +2948,12 @@ function initCollectionForm() {
       return;
     }
 
+    if (request.status === 'Collected') {
+      showToast(`Request ${jobId} is already completed & collected. Updates are locked.`, 'warning');
+      closeModal('recordCollectionModal');
+      return;
+    }
+
     if (outcome === 'Completed') {
       const actualKgVal = document.getElementById('colActualWeight').value;
       const actualKg = actualKgVal ? parseFloat(actualKgVal) : (request.actualKg || request.estimatedKg || 10);
@@ -2954,6 +2994,11 @@ function initCollectionForm() {
 function openRecordCollectionModal(reqId) {
   const req = store.data.requests.find(r => r.id === reqId);
   if (!req) return;
+
+  if (req.status === 'Collected') {
+    showToast(`Request ${req.id} has already been picked up and completed. Further collection updates are locked.`, 'info');
+    return;
+  }
 
   document.getElementById('colJobId').value = req.id;
   document.getElementById('recordCollectionSubtitle').textContent = `Stop ID: ${req.id} • ${req.address} (${req.zone})`;
@@ -3828,14 +3873,11 @@ function renderFunction1() {
   renderActiveRequests();
   renderCollectionHistory();
 
-  const activeZone = user.zone || 'Colombo Fort';
+  const currentlyActivePill = document.querySelector('#scheduleZonePills .pill-btn.active');
+  const activeZone = currentlyActivePill ? currentlyActivePill.getAttribute('data-zone') : (user.zone || 'Colombo Fort');
   const zonePills = document.querySelectorAll('#scheduleZonePills .pill-btn');
   zonePills.forEach(p => {
-    if (p.getAttribute('data-zone') === activeZone) {
-      p.classList.add('active');
-    } else {
-      p.classList.remove('active');
-    }
+    p.classList.toggle('active', p.getAttribute('data-zone') === activeZone);
   });
   renderWeeklySchedules(activeZone);
 }
@@ -3923,28 +3965,41 @@ function renderActiveRequests(categoryFilter = 'all') {
                     <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3);">🗑️ Delete</button>
                   `;
                 }
+                if (req.status === 'Collected') {
+                  return `
+                    <span class="status-pill active" style="font-size:0.75rem;">✅ Picked Up & Completed</span>
+                    <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">+${req.pointsAwarded || 0} pts verified</span>
+                  `;
+                }
                 const isUnassigned = !req.assignedCrew || req.assignedCrew === 'Unassigned' || req.status === 'Submitted';
                 return `
                   <button class="btn btn-sm ${isUnassigned ? 'btn-primary' : 'btn-outline'} btn-update-req" onclick="openUpdateRequestModal('${req.id}')">${isUnassigned ? '📋 Assign Crew' : '✏️ Update Request'}</button>
-                  ${req.status !== 'Collected' && req.status !== 'Missed' ? `
+                  ${req.status !== 'Missed' ? `
                     <button class="btn btn-sm btn-primary" onclick="openRecordCollectionModal('${req.id}')">⚖️ Weigh & Complete</button>
-                  ` : req.status === 'Collected' ? `
-                    <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">+${req.pointsAwarded} pts verified</span>
                   ` : `
                     <button class="btn btn-sm btn-danger" onclick="rescheduleMissed('${req.id}')">Reschedule</button>
                   `}
                 `;
               } else {
+                if (req.status === 'Cancelled') {
+                  return `
+                    <span class="status-pill cancelled">Cancelled</span>
+                    <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3);">🗑️ Delete</button>
+                  `;
+                }
+                if (req.status === 'Collected') {
+                  return `
+                    <span class="status-pill active" style="font-size:0.75rem;">✅ Picked Up & Completed</span>
+                    <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">+${req.pointsAwarded || 0} pts awarded</span>
+                    <button class="btn-cancel-req" onclick="deletePickupRequest('${req.id}')" style="background:rgba(239, 68, 68, 0.08); color:var(--danger); border-color:rgba(239, 68, 68, 0.3);">🗑️ Delete</button>
+                  `;
+                }
                 const isUnassigned = !req.assignedCrew || req.assignedCrew === 'Unassigned' || req.status === 'Submitted';
                 return `
                   <button class="btn btn-sm ${isUnassigned ? 'btn-primary' : 'btn-outline'} btn-update-req" onclick="openUpdateRequestModal('${req.id}')">${isUnassigned ? '📋 Assign Crew' : '✏️ Update Request'}</button>
-                  ${req.status !== 'Collected' && req.status !== 'Missed' && req.status !== 'Cancelled' ? `
+                  ${req.status !== 'Missed' ? `
                     <button class="btn btn-sm btn-primary" onclick="openRecordCollectionModal('${req.id}')">Crew Action</button>
                     <button class="btn-cancel-req" onclick="cancelPickupRequest('${req.id}')">❌ Cancel</button>
-                  ` : req.status === 'Cancelled' ? `
-                    <span class="status-pill cancelled">Cancelled</span>
-                  ` : req.status === 'Collected' ? `
-                    <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">+${req.pointsAwarded} pts awarded</span>
                   ` : `
                     <button class="btn btn-sm btn-danger" onclick="rescheduleMissed('${req.id}')">Reschedule</button>
                   `}
